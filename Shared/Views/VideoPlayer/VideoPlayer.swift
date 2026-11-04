@@ -55,6 +55,8 @@ struct VideoPlayer: View {
             PlaybackControls()
         }
         .onAppear {
+            // Personal fork: the AVPlayer engine updates the progress bar through the container state.
+            (proxy as? AVMediaPlayerProxy)?.containerState = containerState
             manager.proxy = proxy
             manager.start()
         }

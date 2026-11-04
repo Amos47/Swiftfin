@@ -25,6 +25,8 @@ extension MediaPlayerItem {
         subtitleStreamIndex: Int? = nil,
         // Personal fork: nil picks the profile for the item's playback engine (`PlaybackEngine`).
         videoPlayerType: VideoPlayerType? = nil,
+        // Personal fork: false makes the server remux a direct-play file to HLS (e.g. to carry subtitles).
+        enableDirectPlay: Bool = true,
         requestedBitrate: PlaybackBitrate = Defaults[.VideoPlayer.Playback.appMaximumBitrate],
         compatibilityMode: PlaybackCompatibility = Defaults[.VideoPlayer.Playback.compatibilityMode],
         modifyItem: ((inout BaseItemDto) -> Void)? = nil
@@ -81,6 +83,9 @@ extension MediaPlayerItem {
         playbackInfo.userID = userSession.user.id
         playbackInfo.audioStreamIndex = audioStreamIndex
         playbackInfo.subtitleStreamIndex = subtitleStreamIndex
+        if !enableDirectPlay {
+            playbackInfo.enableDirectPlay = false
+        }
 
         if !item.isLiveStream {
             playbackInfo.mediaSourceID = initialMediaSource.id

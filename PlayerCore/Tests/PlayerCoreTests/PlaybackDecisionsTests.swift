@@ -20,6 +20,13 @@ final class PlaybackDecisionsTests: XCTestCase {
         XCTAssertEqual(subtitleSwitch(to: -1, isTextSubtitle: true, shape: .staticFile), .deselectSubtitles)
     }
 
+    func testTurningOffBurnedInSubtitlesRebuilds() {
+        XCTAssertEqual(
+            subtitleSwitch(to: -1, isTextSubtitle: true, shape: hls, fromBurnedIn: true),
+            .rebuild(disableDirectPlay: false)
+        )
+    }
+
     func testTextSubtitleInManifestSelectsInStream() {
         XCTAssertEqual(subtitleSwitch(to: 3, isTextSubtitle: true, shape: hls), .selectInStream(index: 3))
     }

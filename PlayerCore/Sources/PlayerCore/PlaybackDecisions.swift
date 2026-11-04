@@ -24,8 +24,14 @@ public enum TrackSwitch: Sendable, Equatable {
     case rebuild(disableDirectPlay: Bool)
 }
 
-/// - Parameter index: the Jellyfin subtitle stream index, or -1 for off.
-public func subtitleSwitch(to index: Int, isTextSubtitle: Bool, shape: StreamShape) -> TrackSwitch {
+/// - Parameters:
+///   - index: the Jellyfin subtitle stream index, or -1 for off.
+///   - fromBurnedIn: the current subtitle is burned into the video, so only a new stream removes it.
+public func subtitleSwitch(to index: Int, isTextSubtitle: Bool, shape: StreamShape, fromBurnedIn: Bool = false) -> TrackSwitch {
+    if fromBurnedIn {
+        return .rebuild(disableDirectPlay: false)
+    }
+
     guard index != -1 else { return .deselectSubtitles }
 
     // Image subtitles are burned in by the server, which always needs a new stream.

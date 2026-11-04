@@ -14,6 +14,10 @@ import JellyfinAPI
 import StatefulMacros
 import VLCUI
 
+#if os(iOS)
+import PlayerCore
+#endif
+
 // TODO: proper error catching
 // TODO: be a UserSessionService?
 
@@ -319,6 +323,26 @@ final class MediaPlayerManager: ViewModel {
             return
         }
 
+        #if os(iOS)
+        // Personal fork: the Apple engine selects HLS renditions in place, or asks the server for a new stream.
+        if let appleProxy = proxy as? AVMediaPlayerProxy,
+           let decision = playbackItem.appleTrackSwitch(type: type, from: oldIndex, to: newIndex ?? -1)
+        {
+            switch decision {
+            case .selectInStream, .deselectSubtitles:
+                appleProxy.setSubtitleStream(MediaStream(index: newIndex ?? -1))
+            case let .rebuild(disableDirectPlay):
+                try await updateMediaPlayerItem(
+                    currentItem: playbackItem,
+                    audioStreamIndex: type == .audio ? newIndex : nil,
+                    subtitleStreamIndex: type == .subtitle ? (newIndex ?? -1) : nil,
+                    enableDirectPlay: !disableDirectPlay
+                )
+            }
+            return
+        }
+        #endif
+
         switch type {
         case .audio:
             guard playbackItem.audioStreams.contains(where: { $0.index == oldIndex }) else {
@@ -392,7 +416,8 @@ final class MediaPlayerManager: ViewModel {
         currentItem: MediaPlayerItem,
         audioStreamIndex: Int? = nil,
         subtitleStreamIndex: Int? = nil,
-        requestedBitrate: PlaybackBitrate? = nil
+        requestedBitrate: PlaybackBitrate? = nil,
+        enableDirectPlay: Bool = true
     ) async throws {
 
         // Capture the current playback position before stopping
@@ -414,6 +439,7 @@ final class MediaPlayerManager: ViewModel {
             mediaSource: currentItem.mediaSource,
             audioStreamIndex: audioStreamIndex ?? currentItem.selectedAudioStreamIndex,
             subtitleStreamIndex: subtitleStreamIndex ?? currentItem.selectedSubtitleStreamIndex,
+            enableDirectPlay: enableDirectPlay,
             requestedBitrate: requestedBitrate ?? currentItem.requestedBitrate,
             modifyItem: { item in
                 if item.userData == nil {
