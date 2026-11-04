@@ -1,0 +1,35 @@
+//
+// Swiftfin is subject to the terms of the Mozilla Public
+// License, v2.0. If a copy of the MPL was not distributed with this
+// file, you can obtain one at https://mozilla.org/MPL/2.0/.
+//
+// Copyright (c) 2026 Jellyfin & Jellyfin Contributors
+//
+
+import Foundation
+import HomeRowsCore
+
+// Personal fork: Custom Home Rows.
+
+/// One `HomeRowsAPI` per signed-in user on a server, shared by the home screen and the editor, so a save in the
+/// editor is seen by the home screen (`HomeRowsAPI.revision`).
+@MainActor
+enum HomeRowsService {
+
+    private static var apis: [String: HomeRowsAPI] = [:]
+
+    static func api(for session: UserSession) -> HomeRowsAPI {
+        let serverKey = session.client.configuration.url.absoluteString
+        let key = serverKey + "|" + session.user.id
+        if let api = apis[key] {
+            return api
+        }
+
+        let api = HomeRowsAPI(
+            transport: JellyfinHomeRowsTransport(configuration: session.client.configuration),
+            serverKey: serverKey
+        )
+        apis[key] = api
+        return api
+    }
+}
