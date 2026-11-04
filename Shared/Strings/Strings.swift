@@ -828,8 +828,8 @@ internal enum L10n {
   internal static let homeRowsSaveDefault = L10n.tr("Localizable", "homeRowsSaveDefault", fallback: "Save as Default for Everyone")
   /// Make these rows the default home screen for everyone who hasn't customized theirs?
   internal static let homeRowsSaveDefaultMessage = L10n.tr("Localizable", "homeRowsSaveDefaultMessage", fallback: "Make these rows the default home screen for everyone who hasn't customized theirs?")
-  /// Couldn't save. Check the rows marked below.
-  internal static let homeRowsSaveFailed = L10n.tr("Localizable", "homeRowsSaveFailed", fallback: "Couldn't save. Check the rows marked below.")
+  /// Couldn't save. Check the rows marked above.
+  internal static let homeRowsSaveFailed = L10n.tr("Localizable", "homeRowsSaveFailed", fallback: "Couldn't save. Check the rows marked above.")
   /// Show on Home Screen
   internal static let homeRowsShowOnHome = L10n.tr("Localizable", "homeRowsShowOnHome", fallback: "Show on Home Screen")
   /// Unavailable
