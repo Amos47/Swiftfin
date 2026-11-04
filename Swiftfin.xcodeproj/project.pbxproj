@@ -86,7 +86,6 @@
 		E1575E3C293C6B15001665B1 /* Files in Frameworks */ = {isa = PBXBuildFile; productRef = E1575E3B293C6B15001665B1 /* Files */; };
 		E1575E58293E7685001665B1 /* Files in Frameworks */ = {isa = PBXBuildFile; productRef = E1575E57293E7685001665B1 /* Files */; };
 		E15D4F052B1B0C3C00442DB8 /* PreferencesView in Frameworks */ = {isa = PBXBuildFile; productRef = E15D4F042B1B0C3C00442DB8 /* PreferencesView */; };
-		F0A1B2C3D4E5F60718293A04 /* HomeRowsCore in Frameworks */ = {isa = PBXBuildFile; productRef = F0A1B2C3D4E5F60718293A02 /* HomeRowsCore */; };
 		E15EFA842BA167350080E926 /* CollectionHStack in Frameworks */ = {isa = PBXBuildFile; productRef = E15EFA832BA167350080E926 /* CollectionHStack */; };
 		E15EFA862BA1685F0080E926 /* SwiftUIIntrospect in Frameworks */ = {isa = PBXBuildFile; productRef = E15EFA852BA1685F0080E926 /* SwiftUIIntrospect */; };
 		E164308C2E3AA9710028D4E8 /* Transmission in Frameworks */ = {isa = PBXBuildFile; productRef = E164308B2E3AA9710028D4E8 /* Transmission */; };
@@ -107,7 +106,6 @@
 		E1A09F792D05935A00835265 /* CollectionHStack in Frameworks */ = {isa = PBXBuildFile; productRef = E1A09F782D05935A00835265 /* CollectionHStack */; };
 		E1A76F1A2E8369A500A5F2C1 /* StatefulMacros in Frameworks */ = {isa = PBXBuildFile; productRef = E1A76F192E8369A500A5F2C1 /* StatefulMacros */; };
 		E1A7B1652B9A9F7800152546 /* PreferencesView in Frameworks */ = {isa = PBXBuildFile; productRef = E1A7B1642B9A9F7800152546 /* PreferencesView */; };
-		F0A1B2C3D4E5F60718293A05 /* HomeRowsCore in Frameworks */ = {isa = PBXBuildFile; productRef = F0A1B2C3D4E5F60718293A03 /* HomeRowsCore */; };
 		E1B354BB2FC4BB0600827DC1 /* StatefulMacros in Frameworks */ = {isa = PBXBuildFile; productRef = E1B354BA2FC4BB0600827DC1 /* StatefulMacros */; };
 		E1B5F7A729577BCE004B26CF /* Pulse in Frameworks */ = {isa = PBXBuildFile; productRef = E1B5F7A629577BCE004B26CF /* Pulse */; };
 		E1B5F7A929577BCE004B26CF /* PulseLogHandler in Frameworks */ = {isa = PBXBuildFile; productRef = E1B5F7A829577BCE004B26CF /* PulseLogHandler */; };
@@ -122,6 +120,8 @@
 		E1DC9814296DC06200982F06 /* PulseLogHandler in Frameworks */ = {isa = PBXBuildFile; productRef = E1DC9813296DC06200982F06 /* PulseLogHandler */; };
 		E1E2D7BF2E3FD936004E2E5F /* Transmission in Frameworks */ = {isa = PBXBuildFile; productRef = E1E2D7BE2E3FD936004E2E5F /* Transmission */; };
 		E1FADDF12E84B63600FB310E /* StatefulMacros in Frameworks */ = {isa = PBXBuildFile; productRef = E1FADDF02E84B63600FB310E /* StatefulMacros */; };
+		F0A1B2C3D4E5F60718293A04 /* HomeRowsCore in Frameworks */ = {isa = PBXBuildFile; productRef = F0A1B2C3D4E5F60718293A02 /* HomeRowsCore */; };
+		F0A1B2C3D4E5F60718293A05 /* HomeRowsCore in Frameworks */ = {isa = PBXBuildFile; productRef = F0A1B2C3D4E5F60718293A03 /* HomeRowsCore */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -1240,13 +1240,13 @@
 /* End XCConfigurationList section */
 
 /* Begin XCLocalSwiftPackageReference section */
-		F0A1B2C3D4E5F60718293A01 /* XCLocalSwiftPackageReference "HomeRowsCore" */ = {
-			isa = XCLocalSwiftPackageReference;
-			relativePath = HomeRowsCore;
-		};
 		E15D4F032B1B0C3C00442DB8 /* XCLocalSwiftPackageReference "PreferencesView" */ = {
 			isa = XCLocalSwiftPackageReference;
 			relativePath = PreferencesView;
+		};
+		F0A1B2C3D4E5F60718293A01 /* XCLocalSwiftPackageReference "HomeRowsCore" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = HomeRowsCore;
 		};
 /* End XCLocalSwiftPackageReference section */
 
@@ -1446,16 +1446,6 @@
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
-		F0A1B2C3D4E5F60718293A02 /* HomeRowsCore */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = F0A1B2C3D4E5F60718293A01 /* XCLocalSwiftPackageReference "HomeRowsCore" */;
-			productName = HomeRowsCore;
-		};
-		F0A1B2C3D4E5F60718293A03 /* HomeRowsCore */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = F0A1B2C3D4E5F60718293A01 /* XCLocalSwiftPackageReference "HomeRowsCore" */;
-			productName = HomeRowsCore;
-		};
 		BD88CB412D77E6A0006BB5E3 /* TVOSPicker */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = BD88CB402D77E6A0006BB5E3 /* XCRemoteSwiftPackageReference "TVOSPicker" */;
@@ -1820,6 +1810,16 @@
 		E1FADDF02E84B63600FB310E /* StatefulMacros */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = StatefulMacros;
+		};
+		F0A1B2C3D4E5F60718293A02 /* HomeRowsCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = F0A1B2C3D4E5F60718293A01 /* XCLocalSwiftPackageReference "HomeRowsCore" */;
+			productName = HomeRowsCore;
+		};
+		F0A1B2C3D4E5F60718293A03 /* HomeRowsCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = F0A1B2C3D4E5F60718293A01 /* XCLocalSwiftPackageReference "HomeRowsCore" */;
+			productName = HomeRowsCore;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

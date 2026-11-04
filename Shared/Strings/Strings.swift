@@ -782,6 +782,64 @@ internal enum L10n {
   internal static let hint = L10n.tr("Localizable", "hint", fallback: "Hint")
   /// Home
   internal static let home = L10n.tr("Localizable", "home", fallback: "Home")
+  /// Add Row
+  internal static let homeRowsAddRow = L10n.tr("Localizable", "homeRowsAddRow", fallback: "Add Row")
+  /// Up to 20 rows
+  internal static let homeRowsAddRowFull = L10n.tr("Localizable", "homeRowsAddRowFull", fallback: "Up to 20 rows")
+  /// Default
+  internal static let homeRowsDefaultTitle = L10n.tr("Localizable", "homeRowsDefaultTitle", fallback: "Default")
+  /// Discard
+  internal static let homeRowsDiscard = L10n.tr("Localizable", "homeRowsDiscard", fallback: "Discard")
+  /// Out of range
+  internal static let homeRowsErrorOutOfRange = L10n.tr("Localizable", "homeRowsErrorOutOfRange", fallback: "Out of range")
+  /// Pick at least one
+  internal static let homeRowsErrorPickAtLeastOne = L10n.tr("Localizable", "homeRowsErrorPickAtLeastOne", fallback: "Pick at least one")
+  /// Required
+  internal static let homeRowsErrorRequired = L10n.tr("Localizable", "homeRowsErrorRequired", fallback: "Required")
+  /// Too long
+  internal static let homeRowsErrorTooLong = L10n.tr("Localizable", "homeRowsErrorTooLong", fallback: "Too long")
+  /// No longer available, pick another
+  internal static let homeRowsErrorUnknownOption = L10n.tr("Localizable", "homeRowsErrorUnknownOption", fallback: "No longer available, pick another")
+  /// Hidden
+  internal static let homeRowsHidden = L10n.tr("Localizable", "homeRowsHidden", fallback: "Hidden")
+  /// Keep Editing
+  internal static let homeRowsKeepEditing = L10n.tr("Localizable", "homeRowsKeepEditing", fallback: "Keep Editing")
+  /// Couldn't load the home screen rows.
+  internal static let homeRowsLoadFailed = L10n.tr("Localizable", "homeRowsLoadFailed", fallback: "Couldn't load the home screen rows.")
+  /// Moving: up and down to move, select to drop
+  internal static let homeRowsMoving = L10n.tr("Localizable", "homeRowsMoving", fallback: "Moving: up and down to move, select to drop")
+  /// Needs settings
+  internal static let homeRowsNeedsSettings = L10n.tr("Localizable", "homeRowsNeedsSettings", fallback: "Needs settings")
+  /// Remove Household Default
+  internal static let homeRowsRemoveDefault = L10n.tr("Localizable", "homeRowsRemoveDefault", fallback: "Remove Household Default")
+  /// Remove the household default home screen?
+  internal static let homeRowsRemoveDefaultMessage = L10n.tr("Localizable", "homeRowsRemoveDefaultMessage", fallback: "Remove the household default home screen?")
+  /// Remove Row
+  internal static let homeRowsRemoveRow = L10n.tr("Localizable", "homeRowsRemoveRow", fallback: "Remove Row")
+  /// Reorder Rows
+  internal static let homeRowsReorder = L10n.tr("Localizable", "homeRowsReorder", fallback: "Reorder Rows")
+  /// Done Reordering
+  internal static let homeRowsReorderDone = L10n.tr("Localizable", "homeRowsReorderDone", fallback: "Done Reordering")
+  /// Reset to Default
+  internal static let homeRowsReset = L10n.tr("Localizable", "homeRowsReset", fallback: "Reset to Default")
+  /// Reset your home screen to the default layout? Unsaved changes are lost.
+  internal static let homeRowsResetMessage = L10n.tr("Localizable", "homeRowsResetMessage", fallback: "Reset your home screen to the default layout? Unsaved changes are lost.")
+  /// Save as Default for Everyone
+  internal static let homeRowsSaveDefault = L10n.tr("Localizable", "homeRowsSaveDefault", fallback: "Save as Default for Everyone")
+  /// Make these rows the default home screen for everyone who hasn't customized theirs?
+  internal static let homeRowsSaveDefaultMessage = L10n.tr("Localizable", "homeRowsSaveDefaultMessage", fallback: "Make these rows the default home screen for everyone who hasn't customized theirs?")
+  /// Couldn't save. Check the rows marked below.
+  internal static let homeRowsSaveFailed = L10n.tr("Localizable", "homeRowsSaveFailed", fallback: "Couldn't save. Check the rows marked below.")
+  /// Show on Home Screen
+  internal static let homeRowsShowOnHome = L10n.tr("Localizable", "homeRowsShowOnHome", fallback: "Show on Home Screen")
+  /// Unavailable
+  internal static let homeRowsUnavailable = L10n.tr("Localizable", "homeRowsUnavailable", fallback: "Unavailable")
+  /// Unsaved changes
+  internal static let homeRowsUnsavedChanges = L10n.tr("Localizable", "homeRowsUnsavedChanges", fallback: "Unsaved changes")
+  /// Save your home screen changes before leaving?
+  internal static let homeRowsUnsavedMessage = L10n.tr("Localizable", "homeRowsUnsavedMessage", fallback: "Save your home screen changes before leaving?")
+  /// Home Screen Rows
+  internal static let homeScreenRows = L10n.tr("Localizable", "homeScreenRows", fallback: "Home Screen Rows")
   /// Horizontal pan
   internal static let horizontalPan = L10n.tr("Localizable", "horizontalPan", fallback: "Horizontal pan")
   /// Horizontal swipe
