@@ -284,10 +284,15 @@ extension Defaults.Keys {
         }
 
         static var supplements: Key<[VideoPlayerSupplement]> {
+            #if os(iOS)
+            // Personal fork: the simplified iOS player has no Info / Episodes drawer by default.
+            UserKey("videoPlayerSupplements", default: [])
+            #else
             UserKey(
                 "videoPlayerSupplements",
                 default: VideoPlayerSupplement.supportedCases
             )
+            #endif
         }
 
         static var videoPlayerType: Key<VideoPlayerType> {

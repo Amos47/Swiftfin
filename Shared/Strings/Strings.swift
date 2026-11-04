@@ -74,6 +74,8 @@ internal enum L10n {
   internal static let aired = L10n.tr("Localizable", "aired", fallback: "Aired")
   /// Aired episode order
   internal static let airedEpisodeOrder = L10n.tr("Localizable", "airedEpisodeOrder", fallback: "Aired episode order")
+  /// AirPlay
+  internal static let airPlay = L10n.tr("Localizable", "airPlay", fallback: "AirPlay")
   /// Air time
   internal static let airTime = L10n.tr("Localizable", "airTime", fallback: "Air time")
   /// Airs %s
@@ -142,6 +144,8 @@ internal enum L10n {
   internal static let aspectFill = L10n.tr("Localizable", "aspectFill", fallback: "Aspect fill")
   /// Audio
   internal static let audio = L10n.tr("Localizable", "audio", fallback: "Audio")
+  /// Audio & Subtitles
+  internal static let audioAndSubtitles = L10n.tr("Localizable", "audioAndSubtitles", fallback: "Audio & Subtitles")
   /// The audio bit depth is not supported
   internal static let audioBitDepthNotSupported = L10n.tr("Localizable", "audioBitDepthNotSupported", fallback: "The audio bit depth is not supported")
   /// Audio bitrate
@@ -1134,6 +1138,8 @@ internal enum L10n {
   internal static let newUser = L10n.tr("Localizable", "newUser", fallback: "New user")
   /// Next
   internal static let next = L10n.tr("Localizable", "next", fallback: "Next")
+  /// Next Episode
+  internal static let nextEpisode = L10n.tr("Localizable", "nextEpisode", fallback: "Next Episode")
   /// Next item
   internal static let nextItem = L10n.tr("Localizable", "nextItem", fallback: "Next item")
   /// Next Up
@@ -1604,6 +1610,14 @@ internal enum L10n {
   internal static let simple = L10n.tr("Localizable", "simple", fallback: "Simple")
   /// Size
   internal static let size = L10n.tr("Localizable", "size", fallback: "Size")
+  /// Skip Credits
+  internal static let skipCredits = L10n.tr("Localizable", "skipCredits", fallback: "Skip Credits")
+  /// Skip Intro
+  internal static let skipIntro = L10n.tr("Localizable", "skipIntro", fallback: "Skip Intro")
+  /// Skip Preview
+  internal static let skipPreview = L10n.tr("Localizable", "skipPreview", fallback: "Skip Preview")
+  /// Skip Recap
+  internal static let skipRecap = L10n.tr("Localizable", "skipRecap", fallback: "Skip Recap")
   /// Slider
   internal static let slider = L10n.tr("Localizable", "slider", fallback: "Slider")
   /// Slow scrub

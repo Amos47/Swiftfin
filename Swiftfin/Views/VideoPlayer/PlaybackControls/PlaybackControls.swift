@@ -84,6 +84,13 @@ extension VideoPlayer {
 
                 PlaybackButtons()
                     .isVisible(!isScrubbing && containerState.isPresentingPlaybackControls)
+
+                // Personal fork: shown whenever playback is inside a segment, with or without the controls.
+                SkipButtonView()
+                    .isVisible(!isScrubbing && !isPresentingSupplement)
+                    .padding(.trailing, safeAreaInsets.trailing + EdgeInsets.edgePadding)
+                    .padding(.bottom, max(safeAreaInsets.bottom, EdgeInsets.edgePadding) + bottomContentFrame.height + 8)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
             }
             .modifier(VideoPlayer.KeyCommandsModifier())
             .animation(.linear(duration: 0.1), value: isScrubbing)
