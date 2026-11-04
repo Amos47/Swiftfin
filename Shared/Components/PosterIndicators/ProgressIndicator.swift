@@ -18,7 +18,6 @@ struct ProgressIndicator: View {
     let progress: Double
     let posterDisplayType: PosterDisplayType
 
-    @ViewBuilder
     private var compactView: some View {
         Rectangle()
             .fill(accentColor)
@@ -27,7 +26,6 @@ struct ProgressIndicator: View {
             .frame(height: 6)
     }
 
-    @ViewBuilder
     private var regularView: some View {
         VStack(alignment: .leading, spacing: 5) {
 

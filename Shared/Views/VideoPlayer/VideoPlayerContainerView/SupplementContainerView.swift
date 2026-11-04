@@ -55,7 +55,6 @@ extension VideoPlayer.UIVideoPlayerContainerViewController {
             return false
         }
 
-        @ViewBuilder
         private func supplementContainer(for supplement: some MediaPlayerSupplement) -> some View {
             AlternateLayoutView(alignment: .topLeading) {
                 Color.clear
@@ -64,13 +63,12 @@ extension VideoPlayer.UIVideoPlayerContainerViewController {
             }
             #if os(iOS)
             .background {
-                GestureView()
-                    .environment(\.panGestureDirection, .vertical)
-            }
+                    GestureView()
+                        .environment(\.panGestureDirection, .vertical)
+                }
             #endif
         }
 
-        @ViewBuilder
         private var tabButtons: some View {
             AlternateLayoutView {
                 // swiftlint:disable:next hard_coded_display_string
@@ -117,7 +115,6 @@ extension VideoPlayer.UIVideoPlayerContainerViewController {
             .buttonStyle(SupplementTitleButtonStyle())
         }
 
-        @ViewBuilder
         private var supplementContent: some View {
             ZStack {
                 if containerState.isGuestSupplement, let supplement = containerState.selectedSupplement {

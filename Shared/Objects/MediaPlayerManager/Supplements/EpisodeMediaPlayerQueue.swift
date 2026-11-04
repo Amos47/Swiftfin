@@ -82,8 +82,7 @@ class EpisodeMediaPlayerQueue: ViewModel, MediaPlayerQueue {
     }
 
     private func getAdjacentEpisodes(for item: BaseItemDto?) async throws {
-        guard let item else { return }
-        guard let seriesID = item.seriesID, item.type == .episode else { return }
+        guard let item, let seriesID = item.seriesID, item.type == .episode else { return }
 
         let parameters = try Paths.GetEpisodesParameters(
             userID: authenticatedUser.id,
@@ -321,7 +320,6 @@ extension EpisodeMediaPlayerQueue {
 
             let action: (BaseItemDto) -> Void
 
-            @ViewBuilder
             private var contentView: some View {
                 #if os(tvOS)
                 CollectionHStack(
@@ -385,7 +383,6 @@ extension EpisodeMediaPlayerQueue {
         var viewModel: PagingLibraryViewModel<EpisodeLibrary>
 
         // TODO: Supplements are dismissed on retry, probably due to focus change
-        @ViewBuilder
         private var retryButton: some View {
             AlternateLayoutView {
                 Label(L10n.retry, systemImage: "arrow.clockwise")

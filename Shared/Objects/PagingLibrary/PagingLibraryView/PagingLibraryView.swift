@@ -69,7 +69,6 @@ struct PagingLibraryView<Library: PagingLibrary>: View where Library.Element: Li
         self._viewModel = StateObject(wrappedValue: PagingLibraryViewModel(library: library))
     }
 
-    @ViewBuilder
     private var elementsView: some View {
         AlternateLayoutView {
             Color.clear

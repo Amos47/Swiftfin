@@ -30,7 +30,6 @@ struct SearchView: View {
     @TabItemSelected
     private var tabItemSelected
 
-    @ViewBuilder
     private var suggestionsView: some View {
         VStack(spacing: 20) {
             ForEach(viewModel.suggestions) { item in
@@ -39,13 +38,12 @@ struct SearchView: View {
                 }
                 #if os(tvOS)
                 .buttonStyle(.plain)
-                .foregroundStyle(.secondary)
+                    .foregroundStyle(.secondary)
                 #endif
             }
         }
     }
 
-    @ViewBuilder
     private var resultsView: some View {
         ScrollView {
             ContentGroupVStack(
@@ -98,12 +96,12 @@ struct SearchView: View {
         )
         .environmentObject(focusCoordinator)
         #if os(tvOS)
-            .edgePadding(.top)
+        .edgePadding(.top)
         #else
-            .navigationBarFilterDrawer(
-                viewModel: viewModel.filterViewModel,
-                types: enabledDrawerFilters
-            )
+        .navigationBarFilterDrawer(
+            viewModel: viewModel.filterViewModel,
+            types: enabledDrawerFilters
+        )
         #endif
     }
 }

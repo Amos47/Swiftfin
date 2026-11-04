@@ -172,8 +172,7 @@ class VideoPlayerContainerState: ObservableObject {
 
     init() {
         timerCancellable = timer.sink { [weak self] in
-            guard let self else { return }
-            guard !isScrubbing, !isPresentingSupplement, manager?.playbackRequestStatus != .paused else { return }
+            guard let self, !isScrubbing, !isPresentingSupplement, manager?.playbackRequestStatus != .paused else { return }
 
             withAnimation(.linear(duration: 0.25)) {
                 self.isPresentingOverlay = false

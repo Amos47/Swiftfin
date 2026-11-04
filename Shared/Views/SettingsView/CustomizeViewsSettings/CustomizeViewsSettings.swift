@@ -41,7 +41,8 @@ struct CustomizeViewsSettings: View {
                 router.route(to: .posterSettings)
             }
 
-            HomeSection()
+            // Personal fork: the rows editor on servers with HomeRows, see HomeRowsEditor/
+            HomeRowsAwareHomeSection()
         }
         .navigationTitle(L10n.customize)
     }

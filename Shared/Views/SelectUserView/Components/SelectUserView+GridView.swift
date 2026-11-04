@@ -41,7 +41,6 @@ extension SelectUserView {
             self.onDelete = onDelete
         }
 
-        @ViewBuilder
         private func userGridButton(for item: UserItem) -> some View {
             UserButton(
                 user: item.user,
@@ -84,7 +83,7 @@ extension SelectUserView {
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .scrollIfLargerThanContainer(axes: .horizontal)
             #if os(tvOS)
-                .scrollClipDisabled()
+            .scrollClipDisabled()
             #endif
         }
     }

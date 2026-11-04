@@ -75,7 +75,6 @@ extension ItemView {
             }
         }
 
-        @ViewBuilder
         private var contentView: some View {
             HStack(alignment: .center, spacing: UIDevice.isTV ? 30 : 10) {
 

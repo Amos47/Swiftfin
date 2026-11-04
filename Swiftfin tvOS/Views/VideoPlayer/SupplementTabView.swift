@@ -141,12 +141,7 @@ struct SupplementTabView<Item: Identifiable, Content: View>: PlatformViewControl
         }
 
         private func select(_ selection: Item.ID?, in container: UIViewController) {
-            guard let selection else {
-                removeVisibleHost(animated: true)
-                return
-            }
-
-            guard let host = hosts[selection] else {
+            guard let selection, let host = hosts[selection] else {
                 removeVisibleHost(animated: true)
                 return
             }

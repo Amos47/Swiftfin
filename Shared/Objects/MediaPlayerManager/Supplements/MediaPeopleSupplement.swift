@@ -57,7 +57,6 @@ extension MediaPeopleSupplement {
             }
         }
 
-        @ViewBuilder
         private var iOSCompactView: some View {
             CollectionVGrid(
                 uniqueElements: people,
@@ -70,7 +69,6 @@ extension MediaPeopleSupplement {
             }
         }
 
-        @ViewBuilder
         private func personView(for person: BaseItemPerson) -> some View {
             PosterButton(
                 item: person,
@@ -78,7 +76,6 @@ extension MediaPeopleSupplement {
             ) { _ in }
         }
 
-        @ViewBuilder
         private var iOSRegularView: some View {
             CollectionHStack(
                 uniqueElements: people,

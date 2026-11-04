@@ -16,9 +16,7 @@ extension VideoPlayer.UIVideoPlayerContainerViewController {
         velocity: CGFloat,
         state: UIGestureRecognizer.State
     ) {
-        guard checkGestureLock() else { return }
-        guard !containerState.isPresentingSupplement, state != .ended else { return }
-        guard state != .ended else { return }
+        guard checkGestureLock(), !containerState.isPresentingSupplement, state != .ended, state != .ended else { return }
 
         let action = Defaults[.VideoPlayer.Gesture.pinchGesture]
 

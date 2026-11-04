@@ -56,7 +56,6 @@ struct EditItemElementView<Editor: ItemComponentEditor>: View {
         .disabled(!isEditing)
     }
 
-    @ViewBuilder
     private var contentView: some View {
         List {
             InsetGroupedListHeader(viewModel.editor.displayTitle, description: viewModel.editor.description)

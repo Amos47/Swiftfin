@@ -20,24 +20,24 @@ public class UIPreferencesHostingController: UIHostingController<AnyView> {
         let box = Box()
         let rootView = AnyView(
             content()
-            #if os(iOS)
-                .onPreferenceChange(KeyCommandsPreferenceKey.self) {
-                    box.value?._keyCommandActions = $0
-                }
-                .onPreferenceChange(PrefersHomeIndicatorAutoHiddenPreferenceKey.self) {
-                    box.value?._prefersHomeIndicatorAutoHidden = $0
-                }
-                .onPreferenceChange(PreferredScreenEdgesDeferringSystemGesturesPreferenceKey.self) {
-                    box.value?._preferredScreenEdgesDeferringSystemGestures = $0
-                }
-                .onPreferenceChange(SupportedOrientationsPreferenceKey.self) {
-                    box.value?._orientations = $0
-                }
-            #elseif os(tvOS)
-                .onPreferenceChange(PressCommandsPreferenceKey.self) {
-                    box.value?._pressCommandActions = $0
-                }
-            #endif
+                #if os(iOS)
+                    .onPreferenceChange(KeyCommandsPreferenceKey.self) {
+                        box.value?._keyCommandActions = $0
+                    }
+                    .onPreferenceChange(PrefersHomeIndicatorAutoHiddenPreferenceKey.self) {
+                        box.value?._prefersHomeIndicatorAutoHidden = $0
+                    }
+                    .onPreferenceChange(PreferredScreenEdgesDeferringSystemGesturesPreferenceKey.self) {
+                        box.value?._preferredScreenEdgesDeferringSystemGestures = $0
+                    }
+                    .onPreferenceChange(SupportedOrientationsPreferenceKey.self) {
+                        box.value?._orientations = $0
+                    }
+                #elseif os(tvOS)
+                    .onPreferenceChange(PressCommandsPreferenceKey.self) {
+                        box.value?._pressCommandActions = $0
+                    }
+                #endif
         )
 
         super.init(rootView: rootView)
@@ -138,10 +138,9 @@ public class UIPreferencesHostingController: UIHostingController<AnyView> {
     private var _pressCommandActions: [PressCommandAction] = []
 
     override public func pressesBegan(_ presses: Set<UIPress>, with event: UIPressesEvent?) {
-        guard let buttonPress = presses.first?.type else { return }
-
-        guard let action = _pressCommandActions
-            .first(where: { $0.press == buttonPress }) else { return }
+        guard let buttonPress = presses.first?.type,
+              let action = _pressCommandActions
+                .first(where: { $0.press == buttonPress }) else { return }
         action.action()
     }
     #endif

@@ -21,7 +21,6 @@ struct JumpIntervalPicker: View {
     let title: String
     let selection: Binding<MediaJumpInterval>
 
-    @ViewBuilder
     private var picker: some View {
         Picker(
             title,
@@ -53,7 +52,6 @@ struct JumpIntervalPicker: View {
         }
     }
 
-    @ViewBuilder
     private var content: some View {
         #if os(tvOS)
         ListRowMenu(title, subtitle: Text(selection.wrappedValue.rawValue, format: .minuteSecondsNarrow)) {

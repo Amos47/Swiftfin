@@ -120,6 +120,8 @@
 		E1DC9814296DC06200982F06 /* PulseLogHandler in Frameworks */ = {isa = PBXBuildFile; productRef = E1DC9813296DC06200982F06 /* PulseLogHandler */; };
 		E1E2D7BF2E3FD936004E2E5F /* Transmission in Frameworks */ = {isa = PBXBuildFile; productRef = E1E2D7BE2E3FD936004E2E5F /* Transmission */; };
 		E1FADDF12E84B63600FB310E /* StatefulMacros in Frameworks */ = {isa = PBXBuildFile; productRef = E1FADDF02E84B63600FB310E /* StatefulMacros */; };
+		F0A1B2C3D4E5F60718293A04 /* HomeRowsCore in Frameworks */ = {isa = PBXBuildFile; productRef = F0A1B2C3D4E5F60718293A02 /* HomeRowsCore */; };
+		F0A1B2C3D4E5F60718293A05 /* HomeRowsCore in Frameworks */ = {isa = PBXBuildFile; productRef = F0A1B2C3D4E5F60718293A03 /* HomeRowsCore */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -310,6 +312,7 @@
 				62666E1F27E501DF00EC0ECD /* CoreText.framework in Frameworks */,
 				E13DD3CD27164CA7009D4DAF /* CoreStore in Frameworks */,
 				E1A7B1652B9A9F7800152546 /* PreferencesView in Frameworks */,
+				F0A1B2C3D4E5F60718293A05 /* HomeRowsCore in Frameworks */,
 				E12CDBC12FFB593800828742 /* CollectionVGrid in Frameworks */,
 				E1153DD22BBB649C00424D36 /* SVGKit in Frameworks */,
 				62666E1527E501C800EC0ECD /* AVFoundation.framework in Frameworks */,
@@ -389,6 +392,7 @@
 				E1153DAC2BBA6AD200424D36 /* CollectionHStack in Frameworks */,
 				62666E0D27E501AA00EC0ECD /* QuartzCore.framework in Frameworks */,
 				E15D4F052B1B0C3C00442DB8 /* PreferencesView in Frameworks */,
+				F0A1B2C3D4E5F60718293A04 /* HomeRowsCore in Frameworks */,
 				E19E6E0728A0B958005C10C8 /* NukeUI in Frameworks */,
 				E134DD2C2E7F4DC300AED027 /* StatefulMacros in Frameworks */,
 				E1A76F1A2E8369A500A5F2C1 /* StatefulMacros in Frameworks */,
@@ -523,6 +527,7 @@
 				E1B5F7AA29577BCE004B26CF /* PulseUI */,
 				E1B5F7AC29577BDD004B26CF /* OrderedCollections */,
 				E1A7B1642B9A9F7800152546 /* PreferencesView */,
+				F0A1B2C3D4E5F60718293A03 /* HomeRowsCore */,
 				E1392FEC2BA218A80034110D /* SwiftUIIntrospect */,
 				E1153DD12BBB649C00424D36 /* SVGKit */,
 				E19D41B12BF2BFA50082B8B2 /* KeychainSwift */,
@@ -580,6 +585,7 @@
 				E1523F812B132C350062821A /* CollectionHStack */,
 				E114DB322B1944FA00B75FB3 /* CollectionVGrid */,
 				E15D4F042B1B0C3C00442DB8 /* PreferencesView */,
+				F0A1B2C3D4E5F60718293A02 /* HomeRowsCore */,
 				E113A2A62B5A178D009CAAAA /* CollectionHStack */,
 				E113A2A92B5A179A009CAAAA /* CollectionVGrid */,
 				E15EFA832BA167350080E926 /* CollectionHStack */,
@@ -716,6 +722,7 @@
 				E19DDEC52948EF9900954E10 /* XCRemoteSwiftPackageReference "swift-collections" */,
 				E1DC9812296DC06200982F06 /* XCRemoteSwiftPackageReference "PulseLogHandler" */,
 				E15D4F032B1B0C3C00442DB8 /* XCLocalSwiftPackageReference "PreferencesView" */,
+				F0A1B2C3D4E5F60718293A01 /* XCLocalSwiftPackageReference "HomeRowsCore" */,
 				E1153DCE2BBB634F00424D36 /* XCRemoteSwiftPackageReference "SVGKit" */,
 				E145EB492BE16849003BF6F3 /* XCRemoteSwiftPackageReference "keychain-swift" */,
 				E14EA1632BF70A8E00DE757A /* XCRemoteSwiftPackageReference "Mantis" */,
@@ -1237,6 +1244,10 @@
 			isa = XCLocalSwiftPackageReference;
 			relativePath = PreferencesView;
 		};
+		F0A1B2C3D4E5F60718293A01 /* XCLocalSwiftPackageReference "HomeRowsCore" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = HomeRowsCore;
+		};
 /* End XCLocalSwiftPackageReference section */
 
 /* Begin XCRemoteSwiftPackageReference section */
@@ -1314,7 +1325,7 @@
 		};
 		E13DD3C42716499E009D4DAF /* XCRemoteSwiftPackageReference "CoreStore" */ = {
 			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/JohnEstropia/CoreStore.git";
+			repositoryURL = "https://github.com/Amos47/CoreStore.git";
 			requirement = {
 				kind = upToNextMajorVersion;
 				minimumVersion = 9.0.0;
@@ -1799,6 +1810,16 @@
 		E1FADDF02E84B63600FB310E /* StatefulMacros */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = StatefulMacros;
+		};
+		F0A1B2C3D4E5F60718293A02 /* HomeRowsCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = F0A1B2C3D4E5F60718293A01 /* XCLocalSwiftPackageReference "HomeRowsCore" */;
+			productName = HomeRowsCore;
+		};
+		F0A1B2C3D4E5F60718293A03 /* HomeRowsCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = F0A1B2C3D4E5F60718293A01 /* XCLocalSwiftPackageReference "HomeRowsCore" */;
+			productName = HomeRowsCore;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

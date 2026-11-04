@@ -163,7 +163,6 @@ struct SelectUserView: View {
         }
     }
 
-    @ViewBuilder
     private var contentView: some View {
         VStack(spacing: 0) {
             ZStack {

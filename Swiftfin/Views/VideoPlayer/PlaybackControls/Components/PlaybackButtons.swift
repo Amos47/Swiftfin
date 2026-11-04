@@ -40,7 +40,6 @@ extension VideoPlayer.PlaybackControls {
             !manager.item.isLiveStream
         }
 
-        @ViewBuilder
         private var playButton: some View {
             Button {
                 switch manager.playbackRequestStatus {
@@ -66,7 +65,6 @@ extension VideoPlayer.PlaybackControls {
             }
         }
 
-        @ViewBuilder
         private var jumpForwardButton: some View {
             Button {
                 manager.proxy?.jumpForward(jumpForwardInterval.rawValue)
@@ -83,7 +81,6 @@ extension VideoPlayer.PlaybackControls {
             .foregroundStyle(.primary)
         }
 
-        @ViewBuilder
         private var jumpBackwardButton: some View {
             Button {
                 manager.proxy?.jumpBackward(jumpBackwardInterval.rawValue)

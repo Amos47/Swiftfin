@@ -81,19 +81,18 @@ extension CustomDeviceProfilesView {
                     }
                     .disabled(!isValid)
                 }
-            #if os(iOS)
+                #if os(iOS)
                 .navigationBarBackButtonHidden()
                 .navigationBarCloseButton {
                     isPresentingNotSaved = true
                 }
-            #else
+                #else
                 .onExitCommand {
                     isPresentingNotSaved = true
                 }
-            #endif
+                #endif
         }
 
-        @ViewBuilder
         private var contentView: some View {
             Form(systemImage: "doc") {
                 Section(L10n.behavior) {

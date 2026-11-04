@@ -27,7 +27,6 @@ struct ServerConnectionView: View {
         editMode.isEditing
     }
 
-    @ViewBuilder
     private func serverConnectionRow(_ connection: ServerConnection) -> some View {
         Button {
             guard !isEditing else { return }
@@ -125,8 +124,8 @@ struct ServerConnectionView: View {
                 }
                 #if os(iOS)
                 .backport
-                .buttonStyle(.glass)
-                .controlSize(.small)
+                    .buttonStyle(.glass)
+                    .controlSize(.small)
                 #endif
             }
         }

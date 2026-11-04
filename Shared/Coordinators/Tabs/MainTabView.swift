@@ -59,7 +59,6 @@ struct MainTabView: View {
         }
     }
 
-    @ViewBuilder
     private func tabContent() -> some View {
         TabView(selection: $tabCoordinator.selectedTabID) {
             ForEach(tabCoordinator.tabs, id: \.item.id) { tab in
@@ -71,13 +70,13 @@ struct MainTabView: View {
                         coordinator: tab.coordinator
                     ) {
                         tab.item.content
-                        #if os(iOS)
-                            .if(tabCoordinator.tabs.first?.item.id == tab.item.id) { view in
-                                view.topBarTrailing {
-                                    FirstTabSettingsBarButton()
+                            #if os(iOS)
+                                .if(tabCoordinator.tabs.first?.item.id == tab.item.id) { view in
+                                    view.topBarTrailing {
+                                        FirstTabSettingsBarButton()
+                                    }
                                 }
-                            }
-                        #endif
+                            #endif
                     }
                     .environmentObject(tabCoordinator)
                     .environment(\.tabItemSelected, tab.publisher)
@@ -105,11 +104,11 @@ struct MainTabView: View {
                     await tabCoordinator.route(to: route)
                 }
             }
-        #if os(tvOS)
+            #if os(tvOS)
             .background(alignment: .top) {
                 FocusedPosterCinematicBackgroundView()
             }
-        #endif
+            #endif
     }
 }
 

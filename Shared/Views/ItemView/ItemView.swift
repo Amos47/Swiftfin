@@ -76,7 +76,6 @@ struct ItemView: View {
         return [header] + viewModel.groups
     }
 
-    @ViewBuilder
     private func contentGroupScrollView(
         isEnhanced: Bool = false
     ) -> some View {
@@ -87,12 +86,10 @@ struct ItemView: View {
         )
     }
 
-    @ViewBuilder
     private var blurredNavigationBarScrollView: some View {
         BlurredNavigationBarScrollView(groups: contentGroups)
     }
 
-    @ViewBuilder
     private var content: some View {
         Group {
             switch (isEnhanced, isCompact) {
@@ -134,14 +131,14 @@ struct ItemView: View {
         }
         .environmentObject(focusCoordinator)
         #if os(tvOS)
-            .toolbarVisibility(.hidden, for: .navigationBar)
+        .toolbarVisibility(.hidden, for: .navigationBar)
         #else
-            .navigationBarMenuButton(
-                isLoading: viewModel.background.is(.refreshing),
-                isHidden: !provider.item.canEdit
-            ) {
-                EditItemMenu(item: provider.item)
-            }
+        .navigationBarMenuButton(
+            isLoading: viewModel.background.is(.refreshing),
+            isHidden: !provider.item.canEdit
+        ) {
+            EditItemMenu(item: provider.item)
+        }
         #endif
     }
 }

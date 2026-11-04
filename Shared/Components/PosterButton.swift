@@ -36,7 +36,6 @@ struct PosterButton<Item: Poster>: View {
         self.action = action
     }
 
-    @ViewBuilder
     private var contextMenuPreview: some View {
         buttonLabel()
             .frame(width: posterSize.width)
@@ -45,7 +44,6 @@ struct PosterButton<Item: Poster>: View {
             .glassEffect(in: .rect(cornerRadius: 10))
     }
 
-    @ViewBuilder
     private func posterImage(overlay: some View) -> some View {
         PosterImage(
             item: item,
@@ -60,7 +58,6 @@ struct PosterButton<Item: Poster>: View {
         .hoverEffect(.highlight)
     }
 
-    @ViewBuilder
     private func buttonLabel(overlay: some View = EmptyView()) -> some View {
         VStack(alignment: .leading) {
             posterImage(overlay: overlay)
@@ -89,11 +86,11 @@ struct PosterButton<Item: Poster>: View {
         .buttonStyle(.borderless)
         .buttonBorderShape(.roundedRectangle)
         #if os(tvOS)
-            .focusedValue(\.focusedPoster, AnyPoster(item))
+        .focusedValue(\.focusedPoster, AnyPoster(item))
         #endif
-            .posterContextMenu(for: item) {
-                contextMenuPreview
-                    .withViewContext(viewContext)
-            }
+        .posterContextMenu(for: item) {
+            contextMenuPreview
+                .withViewContext(viewContext)
+        }
     }
 }

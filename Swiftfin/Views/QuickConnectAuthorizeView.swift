@@ -34,7 +34,6 @@ struct QuickConnectAuthorizeView: View {
         self._viewModel = StateObject(wrappedValue: QuickConnectAuthorizeViewModel(user: user))
     }
 
-    @ViewBuilder
     private var loginUserRow: some View {
         HStack {
             if let userSession = viewModel.userSession {
@@ -90,7 +89,7 @@ struct QuickConnectAuthorizeView: View {
                 .backport
                 .buttonStyle(.glassProminent.shadow(false))
                 #if os(iOS)
-                    .controlSize(.large)
+                .controlSize(.large)
                 #endif
             } else {
                 Button {
@@ -107,9 +106,9 @@ struct QuickConnectAuthorizeView: View {
                 .buttonStyle(.glassProminent.shadow(false))
                 .tint(accentColor)
                 #if os(iOS)
-                    .controlSize(.large)
+                .controlSize(.large)
                 #endif
-                    .disabled(code.count != 6 || viewModel.state == .authorizing)
+                .disabled(code.count != 6 || viewModel.state == .authorizing)
             }
         }
         .interactiveDismissDisabled(viewModel.state == .authorizing)

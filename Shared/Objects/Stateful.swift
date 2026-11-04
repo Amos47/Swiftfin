@@ -31,9 +31,9 @@ protocol Stateful: AnyObject {
     func send(_ action: Action)
 }
 
+@MainActor
 extension Stateful {
 
-    @MainActor
     func send(_ action: Action) {
         state = respond(to: action)
     }

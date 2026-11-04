@@ -64,15 +64,15 @@ struct ConnectToServerView: View {
             .listRowInsets(.zero)
             .listRowBackground(Color.clear)
             #if os(iOS)
-                .listRowSeparator(.hidden)
+            .listRowSeparator(.hidden)
             #endif
-                .fontWeight(.semibold)
-                .backport
-                .buttonStyle(.glassProminent.shadow(false))
+            .fontWeight(.semibold)
+            .backport
+            .buttonStyle(.glassProminent.shadow(false))
             #if os(iOS)
-                .controlSize(.large)
+            .controlSize(.large)
             #endif
-                .frame(maxHeight: 75)
+            .frame(maxHeight: 75)
         } else {
             Button {
                 isURLFocused = false
@@ -84,23 +84,22 @@ struct ConnectToServerView: View {
             .listRowInsets(.zero)
             .listRowBackground(Color.clear)
             #if os(iOS)
-                .listRowSeparator(.hidden)
+            .listRowSeparator(.hidden)
             #endif
-                .fontWeight(.semibold)
-                .backport
-                .buttonStyle(.glassProminent.shadow(false))
-                .tint(accentColor)
+            .fontWeight(.semibold)
+            .backport
+            .buttonStyle(.glassProminent.shadow(false))
+            .tint(accentColor)
             #if os(iOS)
-                .controlSize(.large)
+            .controlSize(.large)
             #endif
-                .frame(maxHeight: 75)
-                .disabled(url.isEmpty)
+            .frame(maxHeight: 75)
+            .disabled(url.isEmpty)
         }
     }
 
     // MARK: - Local Servers Section
 
-    @ViewBuilder
     private var localServersSection: some View {
         Section(L10n.localServers) {
             if viewModel.localServers.isEmpty {
@@ -119,7 +118,6 @@ struct ConnectToServerView: View {
         }
     }
 
-    @ViewBuilder
     private var contentView: some View {
         #if os(iOS)
         List {

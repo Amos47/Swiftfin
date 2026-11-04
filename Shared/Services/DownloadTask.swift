@@ -138,8 +138,7 @@ class DownloadTask: NSObject, ObservableObject {
 
     private func downloadBackdropImage() async {
 
-        guard let userSession else { return }
-        guard let type = item.type else { return }
+        guard let userSession, let type = item.type else { return }
 
         let imageURL: URL
 
@@ -166,8 +165,7 @@ class DownloadTask: NSObject, ObservableObject {
 
     private func downloadPrimaryImage() async {
 
-        guard let userSession else { return }
-        guard let type = item.type else { return }
+        guard let userSession, let type = item.type else { return }
 
         let imageURL: URL
 

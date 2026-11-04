@@ -38,7 +38,6 @@ extension ItemView {
             }
         }
 
-        @ViewBuilder
         private var background: some View {
             AlternateLayoutView {
                 Color.clear

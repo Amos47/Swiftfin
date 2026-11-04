@@ -83,7 +83,6 @@ struct InsetGroupedListHeader<Content: View>: View {
     private let learnMoreAction: (() -> Void)?
     private let title: Text?
 
-    @ViewBuilder
     private var header: some View {
         Button {
             learnMoreAction?()

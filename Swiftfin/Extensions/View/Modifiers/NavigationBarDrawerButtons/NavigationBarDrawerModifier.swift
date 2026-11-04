@@ -15,7 +15,6 @@ struct NavigationBarFilterDrawerModifier: ViewModifier {
 
     let types: [ItemFilterType]
 
-    @ViewBuilder
     private var drawer: some View {
         NavigationBarFilterDrawer(
             viewModel: viewModel,

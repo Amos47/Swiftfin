@@ -309,11 +309,10 @@ extension VideoPlayer.UIVideoPlayerContainerViewController {
         PanHandlingAction<Float>(
             startValue: AVAudioSession.sharedInstance().outputVolume
         ) { startState, handlingState, _ in
-            guard handlingState.gestureState != .ended else { return }
-
-            guard let slider = MPVolumeView()
-                .subviews
-                .first(where: { $0 is UISlider }) as? UISlider else { return }
+            guard handlingState.gestureState != .ended,
+                  let slider = MPVolumeView()
+                    .subviews
+                    .first(where: { $0 is UISlider }) as? UISlider else { return }
             let translation: CGFloat = {
                 if startState.direction.isHorizontal {
                     handlingState.translation.x
