@@ -41,7 +41,7 @@ struct HomeRowPosterGroup: ContentGroup {
 @MainActor
 func homeRowGroups(_ rows: [LoadedHomeRow]) -> [any ContentGroup] {
     rows.map { loaded -> any ContentGroup in
-        let library = HomeRowLibrary(rowID: loaded.row.id, title: loaded.title)
+        let library = HomeRowLibrary(rowID: loaded.row.id, title: loaded.title, initialItems: loaded.items.items)
 
         switch loaded.style {
         case .libraryButtons, .libraryTiles:

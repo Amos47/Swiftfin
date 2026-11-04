@@ -78,18 +78,9 @@ struct HomeRowsEditorView: View {
                 await load()
             }
         }
-        .modifier(LeaveGuard(editor: editor, isPromptPresented: $isLeavePromptPresented) {
+        .modifier(LeaveGuard(editor: editor, isPromptPresented: $isLeavePromptPresented, interceptExit: interceptExit) {
             router.dismiss()
         })
-        #if os(tvOS)
-        .onExitCommand(perform: isReordering ? {
-            if heldKey != nil {
-                heldKey = nil
-            } else {
-                isReordering = false
-            }
-        } : nil)
-        #endif
         #if os(iOS)
         .toolbar {
             if editor.loaded, editor.rows.count > 1 {
@@ -244,6 +235,21 @@ struct HomeRowsEditorView: View {
 
     // MARK: - Helpers
 
+    /// tvOS Back while reordering drops the held row first, then leaves reorder mode, before anything else.
+    private func interceptExit() -> Bool {
+        #if os(tvOS)
+        if heldKey != nil {
+            heldKey = nil
+            return true
+        }
+        if isReordering {
+            isReordering = false
+            return true
+        }
+        #endif
+        return false
+    }
+
     private var confirmationTitle: String {
         switch confirmation {
         case .saveDefault: L10n.homeRowsSaveDefault
@@ -303,13 +309,22 @@ struct LeaveGuard: ViewModifier {
     var editor: HomeRowsEditor
     @Binding
     var isPromptPresented: Bool
+    /// Runs first on tvOS Back; true means it handled Back. One handler, so the order is certain.
+    var interceptExit: () -> Bool = { false }
     let leave: () -> Void
+
+    /// False while a row screen is pushed on top. The sheet takes its swipe-to-dismiss setting from this screen even
+    /// then, and row screens hand typed text to the editor only when they close, so dismissing must stay blocked.
+    @State
+    private var isOnTop = true
 
     func body(content: Content) -> some View {
         content
             .navigationBarBackButtonHidden(editor.hasPendingEdits)
             #if os(iOS)
-            .interactiveDismissDisabled(editor.hasPendingEdits)
+            .interactiveDismissDisabled(editor.hasPendingEdits || !isOnTop)
+            .onAppear { isOnTop = true }
+            .onDisappear { isOnTop = false }
             .toolbar {
                 if editor.hasPendingEdits {
                     ToolbarItem(placement: .topBarLeading) {
@@ -323,6 +338,9 @@ struct LeaveGuard: ViewModifier {
             }
             #else
             .onExitCommand {
+                if interceptExit() {
+                    return
+                }
                 if editor.hasPendingEdits {
                     isPromptPresented = true
                 } else {

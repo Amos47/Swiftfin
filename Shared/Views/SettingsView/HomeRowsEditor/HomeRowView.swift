@@ -46,6 +46,11 @@ struct HomeRowView: View {
                 router.dismiss()
             }
         }
+        #if os(iOS)
+        // Typed text reaches the editor when this screen goes away, so the sheet can't be swiped down from here:
+        // going back to the rows list commits it, and the list asks before dropping edits.
+        .interactiveDismissDisabled()
+        #endif
     }
 
     @ViewBuilder
@@ -144,20 +149,62 @@ struct HomeRowView: View {
             get: { value },
             set: { editor.setValue(key: key, setting: field.key, .number(Double($0))) }
         )
-        #if os(tvOS)
-        Picker(field.label, selection: binding) {
-            ForEach(Array(range.prefix(1000)), id: \.self) { Text($0, format: .number).tag($0) }
+        // Small ranges step; wide ones (such as cutoff days, 0...3650) take a typed number, clamped to the range.
+        if range.count <= 100 {
+            #if os(tvOS)
+            Picker(field.label, selection: binding) {
+                ForEach(Array(range), id: \.self) { Text($0, format: .number).tag($0) }
+            }
+            #else
+            Stepper(value: binding, in: range) {
+                LabeledContent(field.label, value: "\(value)")
+            }
+            #endif
+        } else {
+            HomeRowNumberField(label: field.label, range: range, initial: value) { binding.wrappedValue = $0 }
         }
-        #else
-        Stepper(value: binding, in: range) {
-            LabeledContent(field.label, value: "\(value)")
-        }
-        #endif
     }
 
     private func commitTitle() {
         guard let current = editorRow?.row.title ?? Optional(""), current != title else { return }
         editor.setTitle(key: key, title)
+    }
+}
+
+/// A whole number typed in, clamped to `range`, committed when editing ends.
+struct HomeRowNumberField: View {
+
+    let label: String
+    let range: ClosedRange<Int>
+    let initial: Int
+    let commit: (Int) -> Void
+
+    @State
+    private var text = ""
+
+    var body: some View {
+        LabeledContent(label) {
+            TextField(label, text: $text)
+                .multilineTextAlignment(.trailing)
+                #if os(iOS)
+                .keyboardType(.numberPad)
+                #endif
+                .onAppear { text = String(initial) }
+                .onSubmit(apply)
+                .onDisappear(perform: apply)
+        }
+    }
+
+    private func apply() {
+        guard let number = Int(text.trimmingCharacters(in: .whitespaces)) else {
+            text = String(initial)
+            return
+        }
+        let clamped = min(max(number, range.lowerBound), range.upperBound)
+        text = String(clamped)
+        if clamped != initial {
+            commit(clamped)
+        }
     }
 }
 
@@ -232,5 +279,8 @@ struct HomeRowMultiOptionView: View {
             }
         }
         .navigationTitle(field.label)
+        #if os(iOS)
+        .interactiveDismissDisabled(editor.hasPendingEdits)
+        #endif
     }
 }
