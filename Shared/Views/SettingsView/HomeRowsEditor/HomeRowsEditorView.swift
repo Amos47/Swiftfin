@@ -330,7 +330,8 @@ struct LeaveGuard: ViewModifier {
                 }
             }
             #endif
-            .confirmationDialog(L10n.homeRowsUnsavedChanges, isPresented: $isPromptPresented, titleVisibility: .visible) {
+            // An alert, not a confirmation dialog: iOS shows dialogs as popovers that hide the Keep Editing button.
+            .alert(L10n.homeRowsUnsavedChanges, isPresented: $isPromptPresented) {
                 Button(L10n.save) {
                     Task { await choose(.save) }
                 }
