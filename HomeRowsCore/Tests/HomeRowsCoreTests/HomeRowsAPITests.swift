@@ -219,3 +219,34 @@ final class JellyfinDateTests: XCTestCase {
         XCTAssertNil(parseJellyfinDate("not a date"))
     }
 }
+
+/// The server writes GUIDs in .NET "N" format (32 hex digits, no dashes).
+final class ServerGUIDFormatTests: XCTestCase {
+
+    override func setUp() async throws {
+        await HomeRowsAPI.clearSupportCache()
+    }
+
+    func testConfigurationAndItemsAcceptNFormatIDs() async throws {
+        let transport = FakeTransport { _, path in
+            if path == "HomeRows/Configuration" {
+                return (
+                    200,
+                    #"{"ApiVersion":1,"Source":"User","IsCustomized":true,"Rows":[{"Id":"b66b8900e8106b0855bd08f909db4c7d","Provider":"library-buttons","Config":{},"Enabled":true,"IsAvailable":true}]}"#
+                )
+            }
+            return (
+                200,
+                #"{"RowId":"b66b8900e8106b0855bd08f909db4c7d","Items":[],"Presentation":{"CardShape":"Button","PreferredImageType":"Primary"}}"#
+            )
+        }
+        let api = HomeRowsAPI(transport: transport, serverKey: "n")
+
+        let supported = await api.isSupported()
+        XCTAssertTrue(supported)
+        let configuration = try await api.configuration()
+        XCTAssertEqual(configuration.rows.first?.id, UUID(uuidString: "B66B8900-E810-6B08-55BD-08F909DB4C7D"))
+        let items = try await api.items(rowID: XCTUnwrap(configuration.rows.first?.id))
+        XCTAssertEqual(items.rowID, configuration.rows.first?.id)
+    }
+}

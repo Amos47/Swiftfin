@@ -14,6 +14,17 @@ import JellyfinAPI
 /// The id sent for new rows; the server assigns a real one on save.
 public let emptyRowID = UUID(uuidString: "00000000-0000-0000-0000-000000000000")!
 
+/// Parses a GUID as the server writes it: .NET "N" format (32 hex digits, no dashes), or the dashed form.
+func parseServerGUID(_ text: String) -> UUID? {
+    if let uuid = UUID(uuidString: text) {
+        return uuid
+    }
+    guard text.count == 32, text.allSatisfy(\.isHexDigit) else { return nil }
+    let characters = Array(text)
+    let dashed = [0 ..< 8, 8 ..< 12, 12 ..< 16, 16 ..< 20, 20 ..< 32].map { String(characters[$0]) }.joined(separator: "-")
+    return UUID(uuidString: dashed)
+}
+
 /// One row of a layout (server `HomeRowInstanceDto`).
 public struct HomeRowInstance: Hashable, Sendable {
 
@@ -42,7 +53,7 @@ public struct HomeRowInstance: Hashable, Sendable {
 
     init(json: JSONValue) throws {
         guard let object = json.object,
-              let id = object["Id"]?.string.flatMap(UUID.init(uuidString:)),
+              let id = object["Id"]?.string.flatMap(parseServerGUID),
               let provider = object["Provider"]?.string
         else { throw HomeRowsError.invalidResponse }
 
@@ -185,7 +196,11 @@ public struct HomeRowItems: Decodable, Sendable {
 
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
-        rowID = try container.decode(UUID.self, forKey: .rowID)
+        let rowIDText = try container.decode(String.self, forKey: .rowID)
+        guard let rowID = parseServerGUID(rowIDText) else {
+            throw DecodingError.dataCorruptedError(forKey: .rowID, in: container, debugDescription: "Invalid GUID \(rowIDText)")
+        }
+        self.rowID = rowID
         title = try container.decodeIfPresent(String.self, forKey: .title)
         items = try container.decodeIfPresent([BaseItemDto].self, forKey: .items) ?? []
         totalRecordCount = try container.decodeIfPresent(Int.self, forKey: .totalRecordCount)
