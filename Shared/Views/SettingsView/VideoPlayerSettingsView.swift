@@ -136,6 +136,8 @@ struct VideoPlayerSettingsView: View {
                 selection: $jumpForwardLength
             )
 
+            // Personal fork: the iOS player has a fixed, simplified set of buttons.
+            #if os(tvOS)
             ChevronButton(L10n.barButtons) {
                 router.route(to: .actionBarButtonSelector(
                     selectedButtonsBinding: $barActionButtons
@@ -147,6 +149,7 @@ struct VideoPlayerSettingsView: View {
                     selectedButtonsBinding: $menuActionButtons
                 ))
             }
+            #endif
         }
         .onChange(of: barActionButtons) {
             let enabled = barActionButtons.contains(.autoPlay) || menuActionButtons.contains(.autoPlay)
