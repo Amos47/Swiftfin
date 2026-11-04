@@ -46,6 +46,9 @@ struct HomeRowsEditorView: View {
     private var isReordering = false
     @State
     private var heldKey: String?
+    /// The focused row. While a row is held, focus stepping onto a neighbour moves the held row there instead.
+    @FocusState
+    private var focusedKey: String?
     #endif
 
     #if os(iOS)
@@ -58,8 +61,10 @@ struct HomeRowsEditorView: View {
             if editor.loaded {
                 rowsSection
                 actionsSection
+                    .disabled(isHolding)
                 if isAdmin {
                     adminSection
+                        .disabled(isHolding)
                 }
             } else if loadFailed {
                 Section {
@@ -74,10 +79,16 @@ struct HomeRowsEditorView: View {
         }
         .navigationTitle(L10n.homeScreenRows)
         .task {
-            if !editor.loaded {
+            // The editor outlives this screen; reload unless it holds unsaved edits to come back to.
+            if !editor.hasPendingEdits {
                 await load()
             }
         }
+        #if os(tvOS)
+        .onChange(of: focusedKey) { _, newKey in
+            moveHeldRow(toward: newKey)
+        }
+        #endif
         .modifier(LeaveGuard(editor: editor, isPromptPresented: $isLeavePromptPresented, interceptExit: interceptExit) {
             router.dismiss()
         })
@@ -120,7 +131,7 @@ struct HomeRowsEditorView: View {
                 isReordering.toggle()
                 heldKey = nil
             }
-            .disabled(editor.rows.count < 2 && !isReordering)
+            .disabled((editor.rows.count < 2 && !isReordering) || isHolding)
             #endif
 
             ForEach(editor.rows) { editorRow in
@@ -150,24 +161,17 @@ struct HomeRowsEditorView: View {
                         }
                     }
                 }
+                #if os(tvOS)
+                .focused($focusedKey, equals: editorRow.key)
+                #endif
             }
-            #if os(tvOS)
-            .onMoveCommand { direction in
-                    guard let heldKey else { return }
-                    switch direction {
-                    case .up: editor.move(key: heldKey, by: -1)
-                    case .down: editor.move(key: heldKey, by: 1)
-                    default: break
+            #if os(iOS)
+            .onMove { editor.moveRow(from: $0, to: $1) }
+                .onDelete { offsets in
+                    for key in offsets.map({ editor.rows[$0].key }) {
+                        editor.remove(key: key)
                     }
                 }
-            #endif
-            #if os(iOS)
-                .onMove { editor.moveRow(from: $0, to: $1) }
-            .onDelete { offsets in
-                for key in offsets.map({ editor.rows[$0].key }) {
-                    editor.remove(key: key)
-                }
-            }
             #endif
 
             Menu {
@@ -181,7 +185,7 @@ struct HomeRowsEditorView: View {
             } label: {
                 Label(L10n.homeRowsAddRow, systemImage: "plus")
             }
-            .disabled(editor.rows.count >= maxHomeRows)
+            .disabled(editor.rows.count >= maxHomeRows || isHolding)
         } footer: {
             VStack(alignment: .leading) {
                 if editor.rows.count >= maxHomeRows {
@@ -234,6 +238,27 @@ struct HomeRowsEditorView: View {
     }
 
     // MARK: - Helpers
+
+    #if os(tvOS)
+    /// Focus stepped from the held row onto a neighbour: swap the held row into that place and keep focus on it.
+    private func moveHeldRow(toward newKey: String?) {
+        guard let heldKey, let newKey, newKey != heldKey,
+              let from = editor.rows.firstIndex(where: { $0.key == heldKey }),
+              let to = editor.rows.firstIndex(where: { $0.key == newKey })
+        else { return }
+        editor.move(key: heldKey, by: to > from ? 1 : -1)
+        focusedKey = heldKey
+    }
+    #endif
+
+    /// Whether a row is picked up for moving (tvOS only).
+    private var isHolding: Bool {
+        #if os(tvOS)
+        heldKey != nil
+        #else
+        false
+        #endif
+    }
 
     /// tvOS Back while reordering drops the held row first, then leaves reorder mode, before anything else.
     private func interceptExit() -> Bool {

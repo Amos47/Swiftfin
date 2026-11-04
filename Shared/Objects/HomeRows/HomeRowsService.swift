@@ -17,6 +17,19 @@ import HomeRowsCore
 enum HomeRowsService {
 
     private static var apis: [String: HomeRowsAPI] = [:]
+    private static var editors: [ObjectIdentifier: HomeRowsEditor] = [:]
+
+    /// One rows editor per API, so leaving the editor by any route (tvOS Menu, a tab switch) keeps unsaved edits
+    /// for when it's opened again, instead of throwing them away with the screen.
+    static func editor(for api: HomeRowsAPI) -> HomeRowsEditor {
+        let key = ObjectIdentifier(api)
+        if let editor = editors[key] {
+            return editor
+        }
+        let editor = HomeRowsEditor(api: api)
+        editors[key] = editor
+        return editor
+    }
 
     static func api(for session: UserSession) -> HomeRowsAPI {
         let configuration = session.client.configuration

@@ -51,10 +51,18 @@ extension NavigationRoute {
 
     @MainActor
     static func homeRowsEditor(api: HomeRowsAPI, isAdmin: Bool) -> NavigationRoute {
-        let editor = HomeRowsEditor(api: api)
+        let editor = HomeRowsService.editor(for: api)
+        #if os(tvOS)
+        // Presented full screen on tvOS (like EditDeviceProfileView): a pushed screen can't stop Menu from popping
+        // it, so its Back handler would never get to ask about unsaved edits or drop a held row.
+        return NavigationRoute(id: "homeRowsEditor", style: .sheet) {
+            HomeRowsEditorView(editor: editor, isAdmin: isAdmin)
+        }
+        #else
         return NavigationRoute(id: "homeRowsEditor") {
             HomeRowsEditorView(editor: editor, isAdmin: isAdmin)
         }
+        #endif
     }
 
     static func homeRow(editor: HomeRowsEditor, key: String) -> NavigationRoute {
