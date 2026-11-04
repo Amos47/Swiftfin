@@ -39,6 +39,15 @@ struct HomeRowsEditorView: View {
     @State
     private var isLeavePromptPresented = false
 
+    #if os(tvOS)
+    /// Pick-up-and-move reordering with the remote: select a row to pick it up, up and down move it, select (or
+    /// Back) drops it.
+    @State
+    private var isReordering = false
+    @State
+    private var heldKey: String?
+    #endif
+
     #if os(iOS)
     @Environment(\.editMode)
     private var editMode
@@ -72,6 +81,15 @@ struct HomeRowsEditorView: View {
         .modifier(LeaveGuard(editor: editor, isPromptPresented: $isLeavePromptPresented) {
             router.dismiss()
         })
+        #if os(tvOS)
+        .onExitCommand(perform: isReordering ? {
+            if heldKey != nil {
+                heldKey = nil
+            } else {
+                isReordering = false
+            }
+        } : nil)
+        #endif
         #if os(iOS)
         .toolbar {
             if editor.loaded, editor.rows.count > 1 {
@@ -106,13 +124,34 @@ struct HomeRowsEditorView: View {
 
     private var rowsSection: some View {
         Section {
+            #if os(tvOS)
+            Button(isReordering ? L10n.homeRowsReorderDone : L10n.homeRowsReorder) {
+                isReordering.toggle()
+                heldKey = nil
+            }
+            .disabled(editor.rows.count < 2 && !isReordering)
+            #endif
+
             ForEach(editor.rows) { editorRow in
                 ChevronButton {
+                    #if os(tvOS)
+                    if isReordering {
+                        heldKey = heldKey == editorRow.key ? nil : editorRow.key
+                        return
+                    }
+                    #endif
                     router.route(to: .homeRow(editor: editor, key: editorRow.key))
                 } label: {
                     VStack(alignment: .leading, spacing: 2) {
                         Text(editorRowLabel(row: editorRow.row, provider: editor.provider(editorRow.row.provider)))
                             .foregroundStyle(.primary)
+                        #if os(tvOS)
+                        if heldKey == editorRow.key {
+                            Label(L10n.homeRowsMoving, systemImage: "arrow.up.arrow.down")
+                                .font(.footnote)
+                                .foregroundStyle(.tint)
+                        }
+                        #endif
                         if let caption = caption(for: editorRow) {
                             Text(caption)
                                 .font(.footnote)
@@ -121,13 +160,23 @@ struct HomeRowsEditorView: View {
                     }
                 }
             }
-            #if os(iOS)
-            .onMove { editor.moveRow(from: $0, to: $1) }
-                .onDelete { offsets in
-                    for key in offsets.map({ editor.rows[$0].key }) {
-                        editor.remove(key: key)
+            #if os(tvOS)
+            .onMoveCommand { direction in
+                    guard let heldKey else { return }
+                    switch direction {
+                    case .up: editor.move(key: heldKey, by: -1)
+                    case .down: editor.move(key: heldKey, by: 1)
+                    default: break
                     }
                 }
+            #endif
+            #if os(iOS)
+                .onMove { editor.moveRow(from: $0, to: $1) }
+            .onDelete { offsets in
+                for key in offsets.map({ editor.rows[$0].key }) {
+                    editor.remove(key: key)
+                }
+            }
             #endif
 
             Menu {
