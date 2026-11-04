@@ -133,9 +133,15 @@ final class MediaPlayerManager: ViewModel {
     @Published
     var rate: Float = Defaults[.VideoPlayer.Playback.playbackRate] {
         didSet {
-            Defaults[.VideoPlayer.Playback.playbackRate] = rate
+            // Personal fork: a temporary speed (press and hold for 2x) isn't saved as the default.
+            if !isTemporaryRate {
+                Defaults[.VideoPlayer.Playback.playbackRate] = rate
+            }
         }
     }
+
+    /// Personal fork: set while the hold-to-speed gesture controls the rate.
+    var isTemporaryRate = false
 
     @Published
     var queue: AnyMediaPlayerQueue? = nil

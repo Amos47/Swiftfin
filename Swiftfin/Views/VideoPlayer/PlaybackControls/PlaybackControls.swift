@@ -85,6 +85,11 @@ extension VideoPlayer {
                 PlaybackButtons()
                     .isVisible(!isScrubbing && containerState.isPresentingPlaybackControls)
 
+                // Personal fork: the hold-to-speed pill, top centre.
+                SpeedPill()
+                    .padding(.top, safeAreaInsets.top + 8)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+
                 // Personal fork: shown whenever playback is inside a segment, with or without the controls.
                 SkipButtonView()
                     .isVisible(!isScrubbing && !isPresentingSupplement)
