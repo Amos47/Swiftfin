@@ -27,7 +27,6 @@ extension ItemView {
             self.label = label()
         }
 
-        @ViewBuilder
         private var menuContent: some View {
             Group {
                 if viewModel.item.canEditMetadata {

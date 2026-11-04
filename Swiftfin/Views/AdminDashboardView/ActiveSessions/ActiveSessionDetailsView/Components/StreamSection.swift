@@ -16,7 +16,6 @@ extension ActiveSessionDetailsView {
         let nowPlayingItem: BaseItemDto
         let transcodingInfo: TranscodingInfo?
 
-        @ViewBuilder
         private func getMediaComparison(sourceComponent: String, destinationComponent: String) -> some View {
             HStack {
                 Text(sourceComponent)

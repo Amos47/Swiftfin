@@ -44,7 +44,6 @@ extension VideoPlayer.PlaybackControls {
             }
         }
 
-        @ViewBuilder
         private var closeButton: some View {
             Button {
                 if containerState.isPresentingSupplement {
@@ -85,9 +84,9 @@ extension VideoPlayer.PlaybackControls {
             .labelStyle(.iconOnly)
             .modifier(OverlayButtonStyleModifier(onPressed: onPressed))
             #if os(iOS)
-                .background {
-                    EmptyHitTestView()
-                }
+            .background {
+                EmptyHitTestView()
+            }
             #endif
         }
     }
@@ -103,16 +102,13 @@ extension VideoPlayer.PlaybackControls.Toolbar {
         let item: BaseItemDto
 
         private var _titleSubtitle: (title: String, subtitle: String?) {
-            if item.type == .episode {
-                if let parentTitle = item.parentTitle {
-                    return (title: parentTitle, subtitle: item.seasonEpisodeLabel)
-                }
+            if item.type == .episode, let parentTitle = item.parentTitle {
+                return (title: parentTitle, subtitle: item.seasonEpisodeLabel)
             }
 
             return (title: item.displayTitle, subtitle: nil)
         }
 
-        @ViewBuilder
         private func _subtitle(_ subtitle: String) -> some View {
             Text(subtitle)
                 .font(UIDevice.isTV ? .caption : .subheadline)

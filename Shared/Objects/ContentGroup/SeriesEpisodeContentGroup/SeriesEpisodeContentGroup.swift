@@ -81,7 +81,6 @@ struct SeriesEpisodeContentGroup: ContentGroup, Identifiable {
             selectedSeasonViewModel.refresh()
         }
 
-        @ViewBuilder
         var body: some View {
             Group {
                 if let selectedSeasonViewModel {

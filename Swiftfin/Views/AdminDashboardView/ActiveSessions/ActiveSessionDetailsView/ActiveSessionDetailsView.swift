@@ -55,7 +55,6 @@ struct ActiveSessionDetailsView: View {
         }
     }
 
-    @ViewBuilder
     private func messageControl(session: SessionInfoDto) -> some View {
         StateAdapter(
             initialValue: (
@@ -108,7 +107,6 @@ struct ActiveSessionDetailsView: View {
         }
     }
 
-    @ViewBuilder
     private func idleContent(session: SessionInfoDto) -> some View {
         List {
             if let userID = session.userID {
@@ -132,7 +130,6 @@ struct ActiveSessionDetailsView: View {
         }
     }
 
-    @ViewBuilder
     private func sessionContent(
         session: SessionInfoDto,
         nowPlayingItem: BaseItemDto,

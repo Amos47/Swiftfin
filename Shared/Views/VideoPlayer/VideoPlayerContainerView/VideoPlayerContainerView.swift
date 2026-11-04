@@ -105,30 +105,30 @@ extension VideoPlayer {
 
             var body: some View {
                 player
-                #if os(iOS)
-                .overlay(Color.black.opacity(shouldPresentDimOverlay ? 0.5 : 0.0))
-                .animation(.linear(duration: 0.2), value: containerState.isPresentingPlaybackControls)
-                #endif
-                .overlay {
-                    GeometryReader { proxy in
-                        LinearGradient(
-                            stops: [
-                                .init(color: .clear, location: 0),
-                                .init(color: .black.opacity(0.04), location: 0.25),
-                                .init(color: .black.opacity(0.18), location: 0.45),
-                                .init(color: .black.opacity(0.42), location: 0.68),
-                                .init(color: .black.opacity(0.68), location: 0.86),
-                                .init(color: .black.opacity(0.82), location: 1),
-                            ],
-                            startPoint: .top,
-                            endPoint: .bottom
-                        )
-                        .isVisible(shouldPresentDimOverlay)
-                        .frame(height: proxy.size.height * 0.55)
-                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
+                    #if os(iOS)
+                        .overlay(Color.black.opacity(shouldPresentDimOverlay ? 0.5 : 0.0))
+                        .animation(.linear(duration: 0.2), value: containerState.isPresentingPlaybackControls)
+                    #endif
+                    .overlay {
+                        GeometryReader { proxy in
+                            LinearGradient(
+                                stops: [
+                                    .init(color: .clear, location: 0),
+                                    .init(color: .black.opacity(0.04), location: 0.25),
+                                    .init(color: .black.opacity(0.18), location: 0.45),
+                                    .init(color: .black.opacity(0.42), location: 0.68),
+                                    .init(color: .black.opacity(0.68), location: 0.86),
+                                    .init(color: .black.opacity(0.82), location: 1),
+                                ],
+                                startPoint: .top,
+                                endPoint: .bottom
+                            )
+                            .isVisible(shouldPresentDimOverlay)
+                            .frame(height: proxy.size.height * 0.55)
+                            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
+                        }
                     }
-                }
-                .allowsHitTesting(false)
+                    .allowsHitTesting(false)
             }
         }
 
@@ -163,51 +163,51 @@ extension VideoPlayer {
                 }
                 #if os(iOS)
                 .environment(
-                    \.longPressAction,
-                    .init(
-                        action: {
-                            containerState.containerView?.handleLongPressGesture(
-                                location: $0,
-                                unitPoint: $1,
-                                state: $2
-                            )
-                        }
+                        \.longPressAction,
+                        .init(
+                            action: {
+                                containerState.containerView?.handleLongPressGesture(
+                                    location: $0,
+                                    unitPoint: $1,
+                                    state: $2
+                                )
+                            }
+                        )
                     )
-                )
-                .environment(
-                    \.panAction,
-                    .init(
-                        action: {
-                            containerState.containerView?.handlePanGesture(
-                                translation: $0,
-                                velocity: $1,
-                                location: $2,
-                                unitPoint: $3,
-                                state: $4
-                            )
-                        }
+                    .environment(
+                        \.panAction,
+                        .init(
+                            action: {
+                                containerState.containerView?.handlePanGesture(
+                                    translation: $0,
+                                    velocity: $1,
+                                    location: $2,
+                                    unitPoint: $3,
+                                    state: $4
+                                )
+                            }
+                        )
                     )
-                )
-                .environment(
-                    \.pinchAction,
-                    .init(
-                        action: {
-                            containerState.containerView?.handlePinchGesture(scale: $0, velocity: $1, state: $2)
-                        }
+                    .environment(
+                        \.pinchAction,
+                        .init(
+                            action: {
+                                containerState.containerView?.handlePinchGesture(scale: $0, velocity: $1, state: $2)
+                            }
+                        )
                     )
-                )
-                .environment(
-                    \.tapGestureAction,
-                    .init(
-                        action: {
-                            containerState.containerView?.handleTapGesture(
-                                location: $0,
-                                unitPoint: $1,
-                                count: $2
-                            )
-                        }
+                    .environment(
+                        \.tapGestureAction,
+                        .init(
+                            action: {
+                                containerState.containerView?.handleTapGesture(
+                                    location: $0,
+                                    unitPoint: $1,
+                                    count: $2
+                                )
+                            }
+                        )
                     )
-                )
                 #endif
             }
         }
@@ -484,8 +484,7 @@ extension VideoPlayer {
             _ didPresent: Bool,
             with panningState: (translation: CGFloat, velocity: CGFloat)? = nil
         ) {
-            guard !isPanning else { return }
-            guard let supplementBottomAnchor, let playerCompactBottomAnchor else { return }
+            guard !isPanning, let supplementBottomAnchor, let playerCompactBottomAnchor else { return }
 
             if didPresent {
                 if containerState.isCompact {

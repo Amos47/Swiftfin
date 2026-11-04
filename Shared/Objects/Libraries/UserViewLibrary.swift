@@ -209,7 +209,6 @@ private struct UserViewLibraryGridElement: View {
         .buttonStyle(.card)
     }
 
-    @ViewBuilder
     private var titleLabel: some View {
         Text(element.displayTitle)
             .font(.title2)
@@ -302,9 +301,9 @@ private struct UserViewLibraryListElement: View {
     }
 }
 
+@MainActor
 private extension UserViewLibraryElement {
 
-    @MainActor
     func libraryImageSources(useRandomImage: Bool) async -> [ImageSource] {
         if useRandomImage {
             return await (try? randomItemImageSources()) ?? []
@@ -318,7 +317,6 @@ private extension UserViewLibraryElement {
         }
     }
 
-    @MainActor
     func randomItemImageSources() async throws -> [ImageSource] {
         guard let userSession = Container.shared.currentUserSession() else {
             throw UserSessionError.missingCurrentSession

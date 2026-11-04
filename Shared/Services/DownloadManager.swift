@@ -48,8 +48,8 @@ class DownloadManager: ObservableObject {
             return currentlyDownloading
         } else {
             var isDir: ObjCBool = true
-            guard let downloadFolder = item.downloadFolder else { return nil }
-            guard FileManager.default.fileExists(atPath: downloadFolder.path, isDirectory: &isDir) else { return nil }
+            guard let downloadFolder = item.downloadFolder,
+                  FileManager.default.fileExists(atPath: downloadFolder.path, isDirectory: &isDir) else { return nil }
 
             return parseDownloadItem(with: item.id!)
         }

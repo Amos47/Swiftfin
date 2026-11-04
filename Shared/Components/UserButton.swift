@@ -51,8 +51,8 @@ struct UserButton: View {
         }
         .foregroundStyle(.primary, .secondary)
         #if os(tvOS)
-            .buttonStyle(.borderless)
-            .buttonBorderShape(.circle)
+        .buttonStyle(.borderless)
+        .buttonBorderShape(.circle)
         #endif
     }
 
@@ -72,7 +72,6 @@ struct UserButton: View {
         #endif
     }
 
-    @ViewBuilder
     private var imageView: some View {
         image
             .hoverEffect(.highlight)

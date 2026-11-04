@@ -1,4 +1,4 @@
-# version: 0.59.1
+# version: 0.64.5 (personal fork: pinned after the one-time reformat)
 
 --swiftversion 6.2
 
@@ -52,3 +52,5 @@
 	build/
 
 --header "\nSwiftfin is subject to the terms of the Mozilla Public\nLicense, v2.0. If a copy of the MPL was not distributed with this\nfile, you can obtain one at https://mozilla.org/MPL/2.0/.\n\nCopyright (c) {year} Jellyfin & Jellyfin Contributors\n"
+
+--minversion 0.64.5

@@ -71,8 +71,7 @@ struct VideoPlayerSettingsView: View {
     }
 
     private func updateConfiguration(_ modify: (inout UserConfiguration) -> Void) {
-        guard viewModel.user.id != nil else { return }
-        guard var configuration = viewModel.user.configuration else { return }
+        guard viewModel.user.id != nil, var configuration = viewModel.user.configuration else { return }
         modify(&configuration)
         viewModel.updateConfiguration(configuration)
     }
@@ -114,7 +113,6 @@ struct VideoPlayerSettingsView: View {
     // MARK: - Gesture Settings
 
     #if os(iOS)
-    @ViewBuilder
     private var gestureSettings: some View {
         Section(L10n.gestures) {
             ChevronButton(L10n.gestures) {
@@ -126,7 +124,6 @@ struct VideoPlayerSettingsView: View {
 
     // MARK: - Button Settings
 
-    @ViewBuilder
     private var buttonSettings: some View {
         Section(L10n.buttons) {
             JumpIntervalPicker(
@@ -163,7 +160,6 @@ struct VideoPlayerSettingsView: View {
 
     // MARK: - Resume Settings
 
-    @ViewBuilder
     private var resumeSettings: some View {
         Section {
             Stepper(L10n.resumeOffset, value: $resumeOffset, in: 0 ... 30, step: 1) {
@@ -188,7 +184,6 @@ struct VideoPlayerSettingsView: View {
 
     // MARK: - Slider Settings
 
-    @ViewBuilder
     private var sliderSettings: some View {
         Section(L10n.slider) {
             Toggle(L10n.chapterSlider, isOn: $chapterSlider)
@@ -199,7 +194,6 @@ struct VideoPlayerSettingsView: View {
 
     // MARK: - Supplement Settings
 
-    @ViewBuilder
     private var supplementSettings: some View {
         Section(L10n.supplements) {
             ChevronButton(L10n.supplements) {
@@ -212,7 +206,6 @@ struct VideoPlayerSettingsView: View {
 
     // MARK: - Timestamp Settings
 
-    @ViewBuilder
     private var timestampSettings: some View {
         Section(L10n.timestamp) {
             PlatformPicker(L10n.trailingValue, selection: $trailingTimestampType)
@@ -221,7 +214,6 @@ struct VideoPlayerSettingsView: View {
 
     // MARK: - Audio Settings
 
-    @ViewBuilder
     private var audioSettings: some View {
         Section(L10n.audio) {
             CulturePicker(L10n.preferredLanguage, threeLetterISOLanguageName: Binding(

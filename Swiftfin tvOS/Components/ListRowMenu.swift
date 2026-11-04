@@ -26,7 +26,6 @@ struct ListRowMenu<Content: View, Subtitle: View>: View {
         }
     }
 
-    @ViewBuilder
     private var labelView: some View {
         HStack {
             title
@@ -51,7 +50,6 @@ struct ListRowMenu<Content: View, Subtitle: View>: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
     }
 
-    @ViewBuilder
     private var glassBody: some View {
         labelView
             .glassEffect(
@@ -63,7 +61,6 @@ struct ListRowMenu<Content: View, Subtitle: View>: View {
             .listRowBackground(Color.clear)
     }
 
-    @ViewBuilder
     private var legacyBody: some View {
         labelView
             .background {

@@ -95,7 +95,6 @@ extension MediaChaptersSupplement {
             .onReceive(manager.secondsBox.$value, perform: updateActiveChapter(for:))
         }
 
-        @ViewBuilder
         private var iOSCompactView: some View {
             // TODO: Scroll to current chapter
             CollectionVGrid(
@@ -121,7 +120,6 @@ extension MediaChaptersSupplement {
             //            }
         }
 
-        @ViewBuilder
         private var iOSRegularView: some View {
             // TODO: Scroll to current chapter
             CollectionHStack(

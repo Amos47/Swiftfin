@@ -224,7 +224,6 @@ extension PlaybackInformationSupplement {
             .padding(.trailing, safeAreaInsets.trailing)
         }
 
-        @ViewBuilder
         private var compactView: some View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 4) {
@@ -240,7 +239,6 @@ extension PlaybackInformationSupplement {
             .edgePadding()
         }
 
-        @ViewBuilder
         private var regularView: some View {
             ScrollView {
                 HStack(alignment: .top, spacing: 24) {

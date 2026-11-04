@@ -44,9 +44,9 @@ struct SettingsView: View {
         }
         #if os(iOS)
         .navigationTitle(L10n.settings)
-        .navigationBarCloseButton {
-            router.dismiss()
-        }
+            .navigationBarCloseButton {
+                router.dismiss()
+            }
         #endif
     }
 
@@ -105,21 +105,20 @@ struct SettingsView: View {
             .listRowInsets(.zero)
             .listRowBackground(Color.clear)
             #if os(iOS)
-                .listRowSeparator(.hidden)
+            .listRowSeparator(.hidden)
             #endif
-                .fontWeight(.semibold)
-                .backport
-                .buttonStyle(.glassProminent.shadow(false))
-                .tint(accentColor)
+            .fontWeight(.semibold)
+            .backport
+            .buttonStyle(.glassProminent.shadow(false))
+            .tint(accentColor)
             #if os(iOS)
-                .controlSize(.large)
+            .controlSize(.large)
             #endif
         }
     }
 
     // MARK: - Video Player Section
 
-    @ViewBuilder
     private var videoPlayerSection: some View {
         Section(L10n.videoPlayer) {
             #if os(iOS)
@@ -149,7 +148,6 @@ struct SettingsView: View {
 
     // MARK: - Customization Section
 
-    @ViewBuilder
     private var customizeSection: some View {
         Section {
             #if os(iOS)
@@ -170,7 +168,6 @@ struct SettingsView: View {
 
     // MARK: - Diagnostics Section
 
-    @ViewBuilder
     private var diagnosticsSection: some View {
         Section {
 

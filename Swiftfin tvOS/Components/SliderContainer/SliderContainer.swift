@@ -263,11 +263,7 @@ final class UISliderContainer<Value: BinaryFloatingPoint, Content: SliderContent
     }
 
     private func setEditing(_ isEditing: Bool, publishState: Bool = true) {
-        guard containerState.isEditing != isEditing else {
-            return
-        }
-
-        guard publishState else {
+        guard containerState.isEditing != isEditing, publishState else {
             return
         }
 

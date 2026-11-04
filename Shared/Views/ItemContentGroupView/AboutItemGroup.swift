@@ -127,7 +127,6 @@ struct AboutItemGroup: ContentGroup {
             .aspectRatio(cardAspectRatio, contentMode: .fit)
         }
 
-        @ViewBuilder
         private func ratingsCard(criticRating: Float, communityRating: Float) -> some View {
             AboutCard(
                 title: L10n.ratings,
@@ -204,10 +203,10 @@ struct AboutItemGroup: ContentGroup {
                 .scrollIndicators(.hidden)
                 .scrollClipDisabled()
                 #if os(tvOS)
-                    .withViewContext(.isOverComplexContent)
+                .withViewContext(.isOverComplexContent)
                 #endif
-                    .frame(height: cardHeight)
-                    .frame(maxWidth: .infinity)
+                .frame(height: cardHeight)
+                .frame(maxWidth: .infinity)
             } header: {
                 Text(L10n.about)
                     .font(.title2)

@@ -63,7 +63,6 @@ extension CustomizeViewsSettings {
             return item
         }
 
-        @ViewBuilder
         private func posterPreview(type: PosterDisplayType) -> some View {
             VStack(alignment: .leading) {
                 PosterImage(

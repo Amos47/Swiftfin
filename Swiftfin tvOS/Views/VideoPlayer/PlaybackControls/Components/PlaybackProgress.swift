@@ -107,7 +107,6 @@ extension VideoPlayer.PlaybackControls {
             return clamp(p, min: 0, max: max(0, sliderSize.width - videoWidth))
         }
 
-        @ViewBuilder
         private var liveIndicator: some View {
             Text(L10n.live)
                 .font(UIDevice.isTV ? .caption : .subheadline)
@@ -121,7 +120,6 @@ extension VideoPlayer.PlaybackControls {
                 }
         }
 
-        @ViewBuilder
         private var videoPlayerSlider: some View {
             VideoPlayerSlider(
                 value: $scrubbedSecondsBox.value.map(

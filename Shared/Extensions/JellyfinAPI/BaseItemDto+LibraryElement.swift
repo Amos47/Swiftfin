@@ -128,11 +128,10 @@ private struct BaseItemDtoLibraryListElement: View {
         }
         .matchedTransitionSource(id: "item", in: namespace)
         #if os(tvOS)
-            .focusedValue(\.focusedPoster, AnyPoster(item))
+        .focusedValue(\.focusedPoster, AnyPoster(item))
         #endif
     }
 
-    @ViewBuilder
     private func currentProgramView(_ program: BaseItemDto) -> some View {
         VStack(alignment: .leading, spacing: 4) {
             Text(program.displayTitle)
@@ -157,7 +156,6 @@ private struct BaseItemDtoLibraryListElement: View {
         }
     }
 
-    @ViewBuilder
     private var accessoryView: some View {
         DotHStack {
             if item.type == .episode, let seasonEpisodeLocator = item.seasonEpisodeLabel {

@@ -68,15 +68,13 @@ func scanDirectory(_ path: String) {
         }
 
         // Process only Swift files
-        if file.hasSuffix(".swift") {
-            if let fileContent = try? String(contentsOfFile: filePath, encoding: .utf8) {
-                for line in fileContent.components(separatedBy: .newlines) {
-                    // Find all matches for L10n.key in each line
-                    let matches = line.matches(of: usageRegex)
-                    for match in matches {
-                        let key = String(match.output.key)
-                        usedKeys.insert(key)
-                    }
+        if file.hasSuffix(".swift"), let fileContent = try? String(contentsOfFile: filePath, encoding: .utf8) {
+            for line in fileContent.components(separatedBy: .newlines) {
+                // Find all matches for L10n.key in each line
+                let matches = line.matches(of: usageRegex)
+                for match in matches {
+                    let key = String(match.output.key)
+                    usedKeys.insert(key)
                 }
             }
         }

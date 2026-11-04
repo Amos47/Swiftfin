@@ -110,8 +110,7 @@ struct CustomizeSettingsView: View {
     }
 
     private func updateConfiguration(_ modify: (inout UserConfiguration) -> Void) {
-        guard viewModel.user.id != nil else { return }
-        guard var configuration = viewModel.user.configuration else { return }
+        guard viewModel.user.id != nil, var configuration = viewModel.user.configuration else { return }
         modify(&configuration)
         viewModel.updateConfiguration(configuration)
     }
@@ -148,7 +147,6 @@ struct CustomizeSettingsView: View {
 
     // MARK: - Home Settings
 
-    @ViewBuilder
     private var homeSettings: some View {
         Section(L10n.home) {
             Toggle(L10n.recentlyAdded, isOn: $showRecentlyAdded)
@@ -201,7 +199,6 @@ struct CustomizeSettingsView: View {
 
     // MARK: - Media Settings
 
-    @ViewBuilder
     private var mediaSettings: some View {
         Section(L10n.media) {
             Toggle(L10n.favorites, isOn: $showFavorites)
@@ -212,7 +209,6 @@ struct CustomizeSettingsView: View {
 
     // MARK: - Filter Settings
 
-    @ViewBuilder
     private var filterSettings: some View {
         Section(L10n.filters) {
             PlatformPicker(L10n.letterPicker, selection: $letterPickerOrientation)
@@ -229,7 +225,6 @@ struct CustomizeSettingsView: View {
 
     // MARK: - Library Settings
 
-    @ViewBuilder
     private var librarySettings: some View {
         Section(L10n.libraries) {
             PlatformPicker(L10n.posters, selection: $libraryStyle.posterDisplayType)
@@ -258,7 +253,6 @@ struct CustomizeSettingsView: View {
 
     // MARK: - Poster Settings
 
-    @ViewBuilder
     private var posterSettings: some View {
         Section(L10n.posters) {
             ChevronButton(L10n.indicators) {
@@ -279,7 +273,6 @@ struct CustomizeSettingsView: View {
 
     // MARK: - Item Settings
 
-    @ViewBuilder
     private var itemSettings: some View {
         Section(L10n.items) {
             ChevronButton(L10n.mediaAttributes) {

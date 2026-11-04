@@ -74,17 +74,14 @@ extension BaseItemDto: Poster {
         }
     }
 
-    @ViewBuilder
     var posterLabel: some View {
         BaseItemDtoPosterLabel(item: self)
     }
 
-    @ViewBuilder
     var posterContextMenu: some View {
         BaseItemDtoPosterContextMenu(item: self)
     }
 
-    @ViewBuilder
     func posterOverlay(for displayType: PosterDisplayType) -> some View {
         ZStack {
             PosterSelectionOverlay()
@@ -404,7 +401,6 @@ private struct BaseItemDtoPosterLabel: View {
     // TODO: allow title to expand to 2 lines if subtitle is nil?
     //       - verify layout
 
-    @ViewBuilder
     private func label(title: String, subtitle: String?) -> some View {
         VStack(alignment: .leading, spacing: 0) {
             Text(title)
@@ -421,7 +417,6 @@ private struct BaseItemDtoPosterLabel: View {
         }
     }
 
-    @ViewBuilder
     private var episodeLabel: some View {
         VStack(alignment: .leading, spacing: 0) {
             if let seriesName = item.seriesName {
@@ -445,7 +440,6 @@ private struct BaseItemDtoPosterLabel: View {
         }
     }
 
-    @ViewBuilder
     private var programLabel: some View {
         VStack(alignment: .leading) {
             Text(item.channelName ?? .emptyDash)
@@ -493,7 +487,6 @@ private struct BaseItemDtoPosterLabel: View {
         }
     }
 
-    @ViewBuilder
     private var extrasLabel: some View {
         VStack(alignment: .leading) {
             Text(item.displayTitle)

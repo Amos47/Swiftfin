@@ -11,6 +11,7 @@ import Defaults
 import FactoryKit
 import Foundation
 import JellyfinAPI
+import StatefulMacros
 import VLCUI
 
 // TODO: proper error catching
@@ -44,8 +45,6 @@ extension Container {
         .scope(.session)
     }
 }
-
-import StatefulMacros
 
 @MainActor
 @Stateful

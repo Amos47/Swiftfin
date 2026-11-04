@@ -16,7 +16,6 @@ extension SelectUserView {
 
         private let columns: CGFloat = UIDevice.isPhone ? 2 : 5
 
-        @ViewBuilder
         private var imageView: some View {
             RelativeSystemImageView(systemName: "plus")
                 .foregroundStyle(Color.secondary)
@@ -25,7 +24,6 @@ extension SelectUserView {
                 .glassEffect(in: .circle)
         }
 
-        @ViewBuilder
         private var addUserButton: some View {
             Button(action: action) {
                 #if os(tvOS)
@@ -50,7 +48,7 @@ extension SelectUserView {
             .foregroundStyle(.primary, .secondary)
             .buttonBorderShape(.circle)
             #if os(tvOS)
-                .buttonStyle(.borderless)
+            .buttonStyle(.borderless)
             #endif
         }
 

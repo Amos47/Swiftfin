@@ -14,7 +14,6 @@ extension VideoPlayer.PlaybackControls {
 
         let onPressed: (Bool) -> Void
 
-        @ViewBuilder
         func body(content: Content) -> some View {
             if #available(iOS 26.0, *), UIDevice.supportsLiquidGlass {
                 content
@@ -54,7 +53,6 @@ extension VideoPlayer.PlaybackControls {
 
         let onPressed: (Bool) -> Void
 
-        @ViewBuilder
         func makeBody(configuration: Configuration) -> some View {
             #if os(tvOS)
             tvOSBody(configuration)

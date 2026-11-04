@@ -21,7 +21,6 @@ struct PlaybackSpeedPicker: View {
     let title: String
     let selection: Binding<PlaybackSpeed>
 
-    @ViewBuilder
     private var picker: some View {
         Picker(
             title,
@@ -53,7 +52,6 @@ struct PlaybackSpeedPicker: View {
         }
     }
 
-    @ViewBuilder
     private var content: some View {
         #if os(tvOS)
         ListRowMenu(title, subtitle: Text(selection.wrappedValue.displayTitle)) {

@@ -136,7 +136,6 @@ struct LocalUserSecurityView: View {
         .errorMessage($error)
     }
 
-    @ViewBuilder
     private var securitySection: some View {
         Section(L10n.security) {
             #if os(iOS)
