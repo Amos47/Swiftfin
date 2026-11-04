@@ -125,6 +125,11 @@ struct VideoPlayer: View {
             containerState.scrubbedSeconds.value = newItem?.baseItem.startSeconds ?? .zero
         }
         .onReceive(manager.$state) { newState in
+            #if os(iOS)
+            if newState == .stopped {
+                showSeriesAfterClosing()
+            }
+            #endif
             if newState == .stopped, !isBeingDismissedByTransition {
                 router.dismiss()
             }
@@ -147,6 +152,18 @@ struct VideoPlayer: View {
     }
 
     #if os(iOS)
+    /// Personal fork: closing an episode lands on its series page, unless that's where playback started.
+    private func showSeriesAfterClosing() {
+        let item = manager.item
+        guard item.type == .episode, let seriesID = item.seriesID,
+              let presenter = router.router.navigationCoordinator?.presenter
+        else { return }
+
+        let seriesRoute = NavigationRoute.item(id: seriesID)
+        guard presenter.path.last?.id != seriesRoute.id else { return }
+        presenter.push(seriesRoute)
+    }
+
     private var appleEngineFallback: some ViewModifier {
         OptionalAppleEngineFallback(proxy: proxy as? AVMediaPlayerProxy, manager: manager) {
             onSwitchToVLC?()

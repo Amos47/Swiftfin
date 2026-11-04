@@ -29,6 +29,10 @@ final class NavigationCoordinator: ObservableObject {
     @Published
     var presentedFullScreen: PresentedRoute?
 
+    /// Personal fork: the coordinator that presented this one full screen, so the video player can leave the series
+    /// page underneath when it closes.
+    weak var presenter: NavigationCoordinator?
+
     func push(
         _ route: NavigationRoute
     ) {
@@ -60,10 +64,12 @@ final class NavigationCoordinator: ObservableObject {
                 coordinator: .init()
             )
         case .fullscreen:
+            let coordinator = NavigationCoordinator()
+            coordinator.presenter = self
             withAnimation {
                 presentedFullScreen = .init(
                     route: route,
-                    coordinator: .init()
+                    coordinator: coordinator
                 )
             }
         }
