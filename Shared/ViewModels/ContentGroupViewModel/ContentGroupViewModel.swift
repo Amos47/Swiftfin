@@ -60,6 +60,11 @@ final class ContentGroupViewModel<Provider: ContentGroupProvider>: ViewModel {
             self?.lastRefreshSignalDate = Date.now
         }
         .store(in: &cancellables)
+
+        // Personal fork: reload after the home rows layout changes, see Objects/HomeRows
+        Notifications[.homeRowsDidChange].publisher
+            .sink { [weak self] _ in self?.refresh() }
+            .store(in: &cancellables)
     }
 
     func refreshIfNeeded(

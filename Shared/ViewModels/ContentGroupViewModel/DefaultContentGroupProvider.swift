@@ -9,6 +9,7 @@
 import Defaults
 import FactoryKit
 import Foundation
+import HomeRowsCore
 import JellyfinAPI
 
 struct DefaultContentGroupProvider: ContentGroupProvider {
@@ -21,6 +22,11 @@ struct DefaultContentGroupProvider: ContentGroupProvider {
 
     func makeGroups(environment: Empty) async throws -> [any ContentGroup] {
         guard let userSession else { return [] }
+
+        // Personal fork: rows from the server's HomeRows API when it has one, see Objects/HomeRows
+        if let rows = await loadHomeRows(api: HomeRowsService.api(for: userSession)) {
+            return homeRowGroups(rows)
+        }
         let parameters = Paths.GetUserViewsParameters(userID: userSession.user.id)
         let userViewsPath = Paths.getUserViews(parameters: parameters)
         let userViews = try await userSession.client.send(userViewsPath)
