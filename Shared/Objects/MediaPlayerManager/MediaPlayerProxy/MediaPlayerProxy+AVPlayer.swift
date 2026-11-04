@@ -13,6 +13,11 @@ import Foundation
 @preconcurrency import JellyfinAPI
 import SwiftUI
 
+#if os(iOS)
+import AVKit
+import PlayerCore
+#endif
+
 // Personal fork: completed so the AVPlayer engine can drive Swiftfin's own controls on iOS (progress, buffering, end of
 // item, rate, audio/subtitle selection). `NativeVideoPlayer` (tvOS's AVPlayerViewController) still uses it unchanged.
 
@@ -45,6 +50,25 @@ class AVMediaPlayerProxy: VideoMediaPlayerProxy {
     private var managerStateObserver: AnyCancellable?
     private var managerRateObserver: AnyCancellable?
     private var didStartCurrentItem = false
+
+    #if os(iOS)
+    /// What the player should do after the Apple engine failed; the view acts on it (`VideoPlayer`).
+    @Published
+    private(set) var fallbackRequest: FallbackDecision = .none
+    @Published
+    private(set) var isPictureInPictureActive = false
+
+    private var pictureInPictureController: AVPictureInPictureController?
+    private var pictureInPictureDelegate: PictureInPictureDelegate?
+    private var firstFrameWatch: Task<Void, Never>?
+    private var retriedItemID: String?
+    private var currentItemID: String?
+
+    /// Leaving the app keeps playing: Picture in Picture is running or about to start.
+    var keepsPlayingInBackground: Bool {
+        isPictureInPictureActive || (pictureInPictureController?.isPictureInPicturePossible ?? false)
+    }
+    #endif
 
     weak var manager: MediaPlayerManager? {
         didSet {
@@ -219,18 +243,37 @@ extension AVMediaPlayerProxy {
     private func playbackStopped() {
         player.pause()
         removeItemObservers()
+        #if os(iOS)
+        firstFrameWatch?.cancel()
+        #endif
     }
 
     private func playNew(item: MediaPlayerItem) {
         removeItemObservers()
 
         let baseItem = item.baseItem
-        let newAVPlayerItem = AVPlayerItem(url: item.url)
+        var url = item.url
+        #if DEBUG
+        // Launch argument for testing the VLC fallback.
+        if ProcessInfo.processInfo.arguments.contains("-forceAppleEngineFailure") {
+            url = URL(string: "http://127.0.0.1:9/fail.m3u8")!
+        }
+        #endif
+        let newAVPlayerItem = AVPlayerItem(url: url)
         newAVPlayerItem.externalMetadata = item.baseItem.avMetadata
 
         hasFirstFrame = false
         didStartCurrentItem = false
         player.replaceCurrentItem(with: newAVPlayerItem)
+
+        #if os(iOS)
+        if currentItemID != baseItem.id {
+            retriedItemID = nil
+        }
+        currentItemID = baseItem.id
+        fallbackRequest = .none
+        watchForFirstFrame()
+        #endif
 
         timeObserver = player.addPeriodicTimeObserver(
             forInterval: CMTime(seconds: 0.25, preferredTimescale: 1000),
@@ -274,9 +317,13 @@ extension AVMediaPlayerProxy {
 
                 switch status {
                 case .failed:
+                    #if os(iOS)
+                    self.evaluateFallback(failed: true, secondsWithoutFirstFrame: 0)
+                    #else
                     if let error = self.player.error ?? avItem.error {
                         self.manager?.error(ErrorMessage("AVPlayer error: \(error.localizedDescription)"))
                     }
+                    #endif
                 case .readyToPlay:
                     guard !self.didStartCurrentItem else { return }
                     self.didStartCurrentItem = true
@@ -307,6 +354,104 @@ extension AVMediaPlayerProxy {
         })
     }
 }
+
+#if os(iOS)
+
+// MARK: - Fallback and Picture in Picture
+
+extension AVMediaPlayerProxy {
+
+    /// Mid-playback failures retry Apple once per item, then offer VLC; start-up failures switch to VLC.
+    private func evaluateFallback(failed: Bool, secondsWithoutFirstFrame: Double) {
+        let decision = fallbackDecision(
+            failed: failed,
+            secondsWithoutFirstFrame: secondsWithoutFirstFrame,
+            isBuffering: isBuffering.value,
+            hadFirstFrame: hasFirstFrame,
+            alreadyRetried: retriedItemID != nil && retriedItemID == currentItemID,
+            isPictureInPictureActive: isPictureInPictureActive
+        )
+
+        guard decision != .none else { return }
+
+        if decision == .retryApple {
+            retriedItemID = currentItemID
+        }
+
+        firstFrameWatch?.cancel()
+        manager?.logger.warning("Apple engine fallback: \(String(describing: decision))")
+        fallbackRequest = decision
+    }
+
+    private func watchForFirstFrame() {
+        firstFrameWatch?.cancel()
+        let started = Date.now
+
+        firstFrameWatch = Task { [weak self] in
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(1))
+                guard let self, !Task.isCancelled, !self.hasFirstFrame else { return }
+                self.evaluateFallback(failed: false, secondsWithoutFirstFrame: Date.now.timeIntervalSince(started))
+            }
+        }
+    }
+
+    /// Starts Picture in Picture automatically when the app goes to the background.
+    func setUpPictureInPicture() {
+        guard pictureInPictureController == nil, AVPictureInPictureController.isPictureInPictureSupported() else { return }
+
+        let delegate = PictureInPictureDelegate(proxy: self)
+        let controller = AVPictureInPictureController(playerLayer: avPlayerLayer)
+        controller?.canStartPictureInPictureAutomaticallyFromInline = true
+        controller?.delegate = delegate
+
+        pictureInPictureController = controller
+        pictureInPictureDelegate = delegate
+    }
+
+    fileprivate func pictureInPictureChanged(isActive: Bool, closedByUser: Bool) {
+        isPictureInPictureActive = isActive
+
+        // Closing the PiP window stops playback, like the player's close button.
+        if closedByUser {
+            manager?.stop()
+        }
+    }
+
+    private final class PictureInPictureDelegate: NSObject, AVPictureInPictureControllerDelegate {
+
+        weak var proxy: AVMediaPlayerProxy?
+        private var isRestoring = false
+
+        init(proxy: AVMediaPlayerProxy) {
+            self.proxy = proxy
+        }
+
+        func pictureInPictureControllerWillStartPictureInPicture(_ controller: AVPictureInPictureController) {
+            isRestoring = false
+            Task { @MainActor [weak proxy] in
+                proxy?.pictureInPictureChanged(isActive: true, closedByUser: false)
+            }
+        }
+
+        func pictureInPictureController(
+            _ controller: AVPictureInPictureController,
+            restoreUserInterfaceForPictureInPictureStopWithCompletionHandler completionHandler: @escaping (Bool) -> Void
+        ) {
+            isRestoring = true
+            completionHandler(true)
+        }
+
+        func pictureInPictureControllerDidStopPictureInPicture(_ controller: AVPictureInPictureController) {
+            let closedByUser = !isRestoring
+            isRestoring = false
+            Task { @MainActor [weak proxy] in
+                proxy?.pictureInPictureChanged(isActive: false, closedByUser: closedByUser)
+            }
+        }
+    }
+}
+#endif
 
 // MARK: - AVPlayerView
 

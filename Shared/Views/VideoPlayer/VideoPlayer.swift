@@ -39,9 +39,15 @@ struct VideoPlayer: View {
     @StateObject
     private var containerState: VideoPlayerContainerState = .init()
 
-    // Personal fork: the engine is injected so iOS can play on Apple's AVPlayer.
-    init(makeProxy: @escaping @MainActor () -> any VideoMediaPlayerProxy = { VLCMediaPlayerProxy() }) {
+    // Personal fork: the engine is injected so iOS can play on Apple's AVPlayer, and can ask to switch to VLC.
+    private let onSwitchToVLC: (() -> Void)?
+
+    init(
+        makeProxy: @escaping @MainActor () -> any VideoMediaPlayerProxy = { VLCMediaPlayerProxy() },
+        onSwitchToVLC: (() -> Void)? = nil
+    ) {
         self._proxy = .init(wrappedValue: makeProxy())
+        self.onSwitchToVLC = onSwitchToVLC
     }
 
     var body: some View {
@@ -57,8 +63,18 @@ struct VideoPlayer: View {
         .onAppear {
             // Personal fork: the AVPlayer engine updates the progress bar through the container state.
             (proxy as? AVMediaPlayerProxy)?.containerState = containerState
+            #if os(iOS)
+            (proxy as? AVMediaPlayerProxy)?.setUpPictureInPicture()
+            #endif
             manager.proxy = proxy
-            manager.start()
+
+            // Personal fork: a player replacing another engine mid-item rebuilds the item at its position.
+            if manager.playbackItem != nil, let provider = manager.currentItemProvider() {
+                manager.playNewItem(provider: provider)
+                containerState.toastProxy.present(L10n.playingWithVLC)
+            } else {
+                manager.start()
+            }
         }
         .prefersStatusBarHidden(!containerState.isPresentingOverlay)
         .onChange(of: audioOffset) {
@@ -125,5 +141,33 @@ struct VideoPlayer: View {
         } message: {
             Text(L10n.unableToLoadThisItem)
         }
+        #if os(iOS)
+        .modifier(appleEngineFallback)
+        #endif
+    }
+
+    #if os(iOS)
+    private var appleEngineFallback: some ViewModifier {
+        OptionalAppleEngineFallback(proxy: proxy as? AVMediaPlayerProxy, manager: manager) {
+            onSwitchToVLC?()
+        }
+    }
+    #endif
+}
+
+#if os(iOS)
+private struct OptionalAppleEngineFallback: ViewModifier {
+
+    let proxy: AVMediaPlayerProxy?
+    let manager: MediaPlayerManager
+    let onSwitchToVLC: () -> Void
+
+    func body(content: Content) -> some View {
+        if let proxy {
+            content.modifier(AppleEngineFallbackModifier(proxy: proxy, manager: manager, onSwitchToVLC: onSwitchToVLC))
+        } else {
+            content
+        }
     }
 }
+#endif

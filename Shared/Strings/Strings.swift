@@ -1282,6 +1282,8 @@ internal enum L10n {
   internal static let playerSwiftfinDescription = L10n.tr("Localizable", "playerSwiftfinDescription", fallback: "Uses VLC's VLCKit to provide compatibility with nearly any file type. However, VLCKit cannot use HomePod or AirPlay-enabled speakers, HDR, Picture in Picture, or AirPlay casting.")
   /// Play From beginning
   internal static let playFromBeginning = L10n.tr("Localizable", "playFromBeginning", fallback: "Play From beginning")
+  /// Playing with VLC
+  internal static let playingWithVLC = L10n.tr("Localizable", "playingWithVLC", fallback: "Playing with VLC")
   /// Playlist
   internal static let playlist = L10n.tr("Localizable", "playlist", fallback: "Playlist")
   /// Playlists
@@ -1294,6 +1296,8 @@ internal enum L10n {
   internal static let playNextItem = L10n.tr("Localizable", "playNextItem", fallback: "Play next item")
   /// Play previous item
   internal static let playPreviousItem = L10n.tr("Localizable", "playPreviousItem", fallback: "Play previous item")
+  /// Play with VLC
+  internal static let playWithVLC = L10n.tr("Localizable", "playWithVLC", fallback: "Play with VLC")
   /// Portrait
   internal static let portrait = L10n.tr("Localizable", "portrait", fallback: "Portrait")
   /// Posters
