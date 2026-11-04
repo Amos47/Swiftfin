@@ -294,6 +294,11 @@ extension Defaults.Keys {
             UserKey("videoPlayerType", default: .swiftfin)
         }
 
+        // Personal fork: the iOS playback engine; replaces `videoPlayerType` on iOS.
+        static var playbackEngine: Key<PlaybackEngine> {
+            UserKey("playbackEngine", default: .automatic)
+        }
+
         enum Gesture {
 
             static var horizontalPanAction: Key<PanGestureAction> {

@@ -99,12 +99,4 @@ final class PlaybackDecisionsTests: XCTestCase {
         XCTAssertEqual(fallback(failed: true, hadFrame: true, retried: true, pip: true), .offerVLC)
         XCTAssertEqual(fallback(failed: true, pip: true), .retryApple)
     }
-
-    // MARK: - Migration
-
-    func testAnyStoredPlayerTypeMigratesToAutomatic() {
-        XCTAssertTrue(migratedEngineIsAutomatic(storedPlayerType: nil))
-        XCTAssertTrue(migratedEngineIsAutomatic(storedPlayerType: "swiftfin"))
-        XCTAssertTrue(migratedEngineIsAutomatic(storedPlayerType: "native"))
-    }
 }

@@ -227,8 +227,6 @@ extension AVMediaPlayerProxy {
 
         @EnvironmentObject
         private var proxy: AVMediaPlayerProxy
-        @EnvironmentObject
-        private var scrubbedSeconds: PublishedBox<Duration>
 
         func makeUIView(context: Context) -> UIView {
 //            proxy.isScrubbing = context.environment.isScrubbing

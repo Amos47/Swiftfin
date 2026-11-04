@@ -1254,6 +1254,12 @@ internal enum L10n {
   internal static let playAndPause = L10n.tr("Localizable", "playAndPause", fallback: "Play / Pause")
   /// Playback
   internal static let playback = L10n.tr("Localizable", "playback", fallback: "Playback")
+  /// Playback engine
+  internal static let playbackEngine = L10n.tr("Localizable", "playbackEngine", fallback: "Playback engine")
+  /// Automatic
+  internal static let playbackEngineAutomatic = L10n.tr("Localizable", "playbackEngineAutomatic", fallback: "Automatic")
+  /// VLC only
+  internal static let playbackEngineVLCOnly = L10n.tr("Localizable", "playbackEngineVLCOnly", fallback: "VLC only")
   /// Playback quality
   internal static let playbackQuality = L10n.tr("Localizable", "playbackQuality", fallback: "Playback quality")
   /// Force media from the server to transcode if it exceeds the selected resolution or bitrate.

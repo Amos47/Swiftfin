@@ -39,8 +39,9 @@ struct VideoPlayer: View {
     @StateObject
     private var containerState: VideoPlayerContainerState = .init()
 
-    init() {
-        self._proxy = .init(wrappedValue: VLCMediaPlayerProxy())
+    // Personal fork: the engine is injected so iOS can play on Apple's AVPlayer.
+    init(makeProxy: @escaping @MainActor () -> any VideoMediaPlayerProxy = { VLCMediaPlayerProxy() }) {
+        self._proxy = .init(wrappedValue: makeProxy())
     }
 
     var body: some View {

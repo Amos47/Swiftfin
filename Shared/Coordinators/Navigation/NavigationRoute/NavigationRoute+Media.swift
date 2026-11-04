@@ -85,11 +85,20 @@ struct VideoPlayerViewShim: View {
 
     var body: some View {
         Group {
+            #if os(iOS)
+            // Personal fork: iOS always uses Swiftfin's controls, on Apple's engine or VLC (`PlaybackEngine`).
+            if PlaybackEngine.usesAppleEngine(for: manager.item) {
+                VideoPlayer { AVMediaPlayerProxy() }
+            } else {
+                VideoPlayer()
+            }
+            #else
             if Defaults[.VideoPlayer.videoPlayerType] == .swiftfin {
                 VideoPlayer()
             } else {
                 NativeVideoPlayer()
             }
+            #endif
         }
         .colorScheme(.dark) // use over `preferredColorScheme(.dark)` to not have destination change
         .environment(\.safeAreaInsets, safeAreaInsets)

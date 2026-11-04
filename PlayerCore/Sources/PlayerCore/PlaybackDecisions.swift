@@ -43,9 +43,9 @@ public func subtitleSwitch(to index: Int, isTextSubtitle: Bool, shape: StreamSha
 public func audioSwitch(to index: Int, shape: StreamShape) -> TrackSwitch {
     switch shape {
     case .staticFile:
-        return .rebuild(disableDirectPlay: false)
+        .rebuild(disableDirectPlay: false)
     case let .hls(_, audioRenditions):
-        return audioRenditions.contains(index) ? .selectInStream(index: index) : .rebuild(disableDirectPlay: false)
+        audioRenditions.contains(index) ? .selectInStream(index: index) : .rebuild(disableDirectPlay: false)
     }
 }
 
@@ -88,12 +88,4 @@ public func fallbackDecision(
     }
 
     return .none
-}
-
-// MARK: - Migration
-
-/// Every stored player type moves to the automatic engine once. The household never chose VLC on purpose; it was the
-/// default.
-public func migratedEngineIsAutomatic(storedPlayerType: String?) -> Bool {
-    true
 }
