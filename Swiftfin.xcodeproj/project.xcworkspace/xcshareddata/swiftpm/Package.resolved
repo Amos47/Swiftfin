@@ -40,10 +40,10 @@
     {
       "identity" : "corestore",
       "kind" : "remoteSourceControl",
-      "location" : "https://github.com/JohnEstropia/CoreStore.git",
+      "location" : "https://github.com/Amos47/CoreStore.git",
       "state" : {
-        "revision" : "5a0d27cf343c6e341b0ef3c8d36104770b27a839",
-        "version" : "9.3.0"
+        "revision" : "26ff58698e29c200789bcaf96c015ba9d7dfdbfc",
+        "version" : "9.3.1"
       }
     },
     {
