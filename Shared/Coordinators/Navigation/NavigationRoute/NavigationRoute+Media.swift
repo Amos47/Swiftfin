@@ -83,13 +83,42 @@ struct VideoPlayerViewShim: View {
 
     let manager: MediaPlayerManager
 
+    #if os(iOS)
+    @State
+    private var usesAppleEngine: Bool
+    @State
+    private var wasPlayingWhenInactive = false
+    #endif
+
+    init(manager: MediaPlayerManager) {
+        self.manager = manager
+        #if os(iOS)
+        self._usesAppleEngine = State(initialValue: PlaybackEngine.usesAppleEngine(for: manager.item))
+        #endif
+    }
+
     var body: some View {
         Group {
+            #if os(iOS)
+            // Personal fork: iOS always uses Swiftfin's controls, on Apple's engine or VLC (`PlaybackEngine`).
+            if usesAppleEngine {
+                VideoPlayer {
+                    AVMediaPlayerProxy()
+                } onSwitchToVLC: {
+                    usesAppleEngine = false
+                }
+                .id("apple")
+            } else {
+                VideoPlayer()
+                    .id("vlc")
+            }
+            #else
             if Defaults[.VideoPlayer.videoPlayerType] == .swiftfin {
                 VideoPlayer()
             } else {
                 NativeVideoPlayer()
             }
+            #endif
         }
         .colorScheme(.dark) // use over `preferredColorScheme(.dark)` to not have destination change
         .environment(\.safeAreaInsets, safeAreaInsets)
@@ -98,10 +127,37 @@ struct VideoPlayerViewShim: View {
         .persistentSystemOverlays(.hidden)
         .toolbar(.hidden, for: .navigationBar)
         .onSceneDidEnterBackground {
+            #if os(iOS)
+            // Personal fork: Picture in Picture keeps playing in the background.
+            if let appleProxy = manager.proxy as? AVMediaPlayerProxy, appleProxy.keepsPlayingInBackground {
+                return
+            }
+            #endif
             if Defaults[.VideoPlayer.Transition.pauseOnBackground] {
                 manager.setPlaybackRequestStatus(status: .paused)
             }
         }
+        #if os(iOS)
+        // Personal fork: each new item (next episode) picks its engine again; a fallback only lasts for its item.
+        .onChange(of: manager.item.id) {
+            let wantsAppleEngine = PlaybackEngine.usesAppleEngine(for: manager.item)
+            if wantsAppleEngine != usesAppleEngine {
+                manager.proxy?.stop()
+                usesAppleEngine = wantsAppleEngine
+            }
+        }
+        // Personal fork: VLC can come back from the app switcher with a frozen picture over live audio. Seeking to
+        // the current position redraws it.
+        .onScenePhase(.inactive) {
+            wasPlayingWhenInactive = manager.playbackRequestStatus == .playing
+        }
+        .onScenePhase(.active) {
+            if wasPlayingWhenInactive, manager.proxy is VLCMediaPlayerProxy {
+                manager.proxy?.setSeconds(manager.seconds)
+            }
+            wasPlayingWhenInactive = false
+        }
+        #endif
         .onFrameChanged { _, safeArea in
             self.safeAreaInsets = safeArea.max(EdgeInsets.edgePadding)
         }

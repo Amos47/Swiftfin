@@ -265,11 +265,21 @@ extension Defaults.Keys {
         }
 
         static var jumpBackwardInterval: Key<MediaJumpInterval> {
+            #if os(iOS)
+            // Personal fork: double-tap jumps 10 s.
+            UserKey("jumpBackwardLength", default: .ten)
+            #else
             UserKey("jumpBackwardLength", default: .fifteen)
+            #endif
         }
 
         static var jumpForwardInterval: Key<MediaJumpInterval> {
+            #if os(iOS)
+            // Personal fork: double-tap jumps 10 s.
+            UserKey("jumpForwardLength", default: .ten)
+            #else
             UserKey("jumpForwardLength", default: .fifteen)
+            #endif
         }
 
         static var menuActionButtons: Key<[VideoPlayerActionButton]> {
@@ -284,14 +294,24 @@ extension Defaults.Keys {
         }
 
         static var supplements: Key<[VideoPlayerSupplement]> {
+            #if os(iOS)
+            // Personal fork: the simplified iOS player has no Info / Episodes drawer by default.
+            UserKey("videoPlayerSupplements", default: [])
+            #else
             UserKey(
                 "videoPlayerSupplements",
                 default: VideoPlayerSupplement.supportedCases
             )
+            #endif
         }
 
         static var videoPlayerType: Key<VideoPlayerType> {
             UserKey("videoPlayerType", default: .swiftfin)
+        }
+
+        // Personal fork: the iOS playback engine; replaces `videoPlayerType` on iOS.
+        static var playbackEngine: Key<PlaybackEngine> {
+            UserKey("playbackEngine", default: .automatic)
         }
 
         enum Gesture {
@@ -305,7 +325,12 @@ extension Defaults.Keys {
             }
 
             static var longPressAction: Key<LongPressGestureAction> {
+                #if os(iOS)
+                // Personal fork: press and hold for 2x.
+                UserKey("videoPlayerLongPressGesture", default: .playbackSpeed)
+                #else
                 UserKey("videoPlayerLongPressGesture", default: .gestureLock)
+                #endif
             }
 
             static var longPressSpeedMultiplier: Key<PlaybackSpeed> {
@@ -316,7 +341,12 @@ extension Defaults.Keys {
             }
 
             static var multiTapGesture: Key<MultiTapGestureAction> {
+                #if os(iOS)
+                // Personal fork: double-tap the sides to jump.
+                UserKey("videoPlayerMultiTapGesture", default: .jump)
+                #else
                 UserKey("videoPlayerMultiTapGesture", default: .none)
+                #endif
             }
 
             static var doubleTouchGesture: Key<DoubleTouchGestureAction> {

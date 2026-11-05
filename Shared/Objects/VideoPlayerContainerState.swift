@@ -10,6 +10,10 @@ import Combine
 import Foundation
 import SwiftUI
 
+#if os(iOS)
+import PlayerCore
+#endif
+
 // TODO: turned into spaghetti to get out, clean up with a better state system
 // TODO: verify timer states
 // TODO: for tvOS, some kind of focus token system
@@ -124,6 +128,13 @@ class VideoPlayerContainerState: ObservableObject {
     var isProgressBarFocused: Bool = false
 
     var originalPlaybackRate: Float?
+
+    #if os(iOS)
+    // Personal fork: press and hold for speed; drag down while holding to lock it.
+    @Published
+    var speedHold: SpeedHold?
+    var speedHoldStart: CGPoint?
+    #endif
 
     let centerOffsetBox: PublishedBox<CGFloat> = .init(initialValue: 0)
     let jumpProgressObserver: JumpProgressObserver = .init()

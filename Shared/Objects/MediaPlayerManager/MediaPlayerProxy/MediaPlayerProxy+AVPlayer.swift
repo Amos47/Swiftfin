@@ -13,19 +13,20 @@ import Foundation
 @preconcurrency import JellyfinAPI
 import SwiftUI
 
-// TODO: After NativeVideoPlayer is removed, can move bindings and
-//       observers to AVPlayerView, like the VLC delegate
-//       - wouldn't need to have MediaPlayerProxy: MediaPlayerObserver
+#if os(iOS)
+import AVKit
+import PlayerCore
+#endif
+
+// Personal fork: completed so the AVPlayer engine can drive Swiftfin's own controls on iOS (progress, buffering, end of
+// item, rate, audio/subtitle selection). `NativeVideoPlayer` (tvOS's AVPlayerViewController) still uses it unchanged.
+
 // TODO: report playback information, see VLCUI.PlaybackInformation (dropped frames, etc.)
-// TODO: report buffering state
-// TODO: have set seconds with completion handler
 
 @MainActor
 class AVMediaPlayerProxy: VideoMediaPlayerProxy {
 
     let isBuffering: PublishedBox<Bool> = .init(initialValue: false)
-    var isScrubbing: Binding<Bool> = .constant(false)
-    var scrubbedSeconds: Binding<Duration> = .constant(.zero)
     var videoSize: PublishedBox<CGSize> = .init(initialValue: .zero)
     let droppedFrames: PublishedBox<Int> = .init(initialValue: 0)
     let corruptedFrames: PublishedBox<Int> = .init(initialValue: 0)
@@ -33,12 +34,47 @@ class AVMediaPlayerProxy: VideoMediaPlayerProxy {
     let avPlayerLayer: AVPlayerLayer
     let player: AVPlayer
 
-//    private var rateObserver: NSKeyValueObservation!
-    private var statusObserver: NSKeyValueObservation!
-    private var timeControlStatusObserver: NSKeyValueObservation!
-    private var timeObserver: Any!
+    /// Set by `AVPlayerView` when hosted in Swiftfin's controls; nil under `NativeVideoPlayer`.
+    weak var containerState: VideoPlayerContainerState?
+
+    /// Whether the current item has shown a frame; used for the fallback rules.
+    @Published
+    private(set) var hasFirstFrame = false
+
+    private var itemObservers: [NSKeyValueObservation] = []
+    private var readyForDisplayObserver: NSKeyValueObservation?
+    private var timeControlStatusObserver: NSKeyValueObservation?
+    private var timeObserver: Any?
+    private var endObserver: NSObjectProtocol?
     private var managerItemObserver: AnyCancellable?
     private var managerStateObserver: AnyCancellable?
+    private var managerRateObserver: AnyCancellable?
+    private var didStartCurrentItem = false
+
+    #if os(iOS)
+    /// What the player should do after the Apple engine failed; the view acts on it (`VideoPlayer`).
+    @Published
+    private(set) var fallbackRequest: FallbackDecision = .none
+    @Published
+    private(set) var isPictureInPictureActive = false
+
+    private var pictureInPictureController: AVPictureInPictureController?
+    private var pictureInPictureDelegate: PictureInPictureDelegate?
+    private var firstFrameWatch: Task<Void, Never>?
+    private var retriedItemID: String?
+    private var currentItemID: String?
+    /// The base item that has shown a frame; survives rebuilds of the same item (subtitle switches, retries).
+    private var firstFrameItemID: String?
+    /// Seconds the current item has spent loading while not paused.
+    private var secondsWaitingForFirstFrame: Double = 0
+
+    /// Leaving the app keeps playing: Picture in Picture is running or about to start.
+    var keepsPlayingInBackground: Bool {
+        player.isExternalPlaybackActive
+            || isPictureInPictureActive
+            || (pictureInPictureController?.isPictureInPicturePossible ?? false)
+    }
+    #endif
 
     weak var manager: MediaPlayerManager? {
         didSet {
@@ -48,23 +84,31 @@ class AVMediaPlayerProxy: VideoMediaPlayerProxy {
 
             if let manager {
                 managerItemObserver = manager.$playbackItem
-                    .sink { playbackItem in
+                    .sink { [weak self] playbackItem in
                         if let playbackItem {
-                            self.playNew(item: playbackItem)
+                            self?.playNew(item: playbackItem)
                         }
                     }
 
                 managerStateObserver = manager.$state
-                    .sink { state in
+                    .sink { [weak self] state in
                         switch state {
                         case .stopped:
-                            self.playbackStopped()
+                            self?.playbackStopped()
                         default: break
                         }
                     }
+
+                #if os(iOS)
+                managerRateObserver = manager.$rate
+                    .sink { [weak self] rate in
+                        self?.setRate(rate)
+                    }
+                #endif
             } else {
                 managerItemObserver?.cancel()
                 managerStateObserver?.cancel()
+                managerRateObserver?.cancel()
             }
         }
     }
@@ -77,22 +121,46 @@ class AVMediaPlayerProxy: VideoMediaPlayerProxy {
         self.player = AVPlayer()
         self.avPlayerLayer = AVPlayerLayer(player: player)
 
-        timeObserver = player.addPeriodicTimeObserver(
-            forInterval: CMTime(seconds: 1, preferredTimescale: 1000),
-            queue: .main
-        ) { newTime in
-            let newSeconds = Duration.seconds(newTime.seconds)
+        #if os(iOS)
+        // The app chooses tracks from the user's Jellyfin settings, not iOS's.
+        player.appliesMediaSelectionCriteriaAutomatically = false
+        #endif
 
-            if !self.isScrubbing.wrappedValue {
-                self.scrubbedSeconds.wrappedValue = newSeconds
+        readyForDisplayObserver = avPlayerLayer.observe(\.isReadyForDisplay, options: [.new]) { [weak self] layer, _ in
+            let isReady = layer.isReadyForDisplay
+            DispatchQueue.main.async {
+                if isReady {
+                    self?.hasFirstFrame = true
+                }
             }
+        }
 
-            self.manager?.seconds = newSeconds
+        timeControlStatusObserver = player.observe(\.timeControlStatus, options: [.new]) { [weak self] player, _ in
+            let timeControlStatus = player.timeControlStatus
+
+            DispatchQueue.main.async {
+                guard let self else { return }
+                switch timeControlStatus {
+                case .paused:
+                    self.isBuffering.value = false
+                    self.manager?.setPlaybackRequestStatus(status: .paused)
+                case .waitingToPlayAtSpecifiedRate:
+                    self.isBuffering.value = true
+                case .playing:
+                    self.isBuffering.value = false
+                    self.manager?.setPlaybackRequestStatus(status: .playing)
+                @unknown default: ()
+                }
+            }
         }
     }
 
     func play() {
+        #if os(iOS)
+        player.playImmediately(atRate: manager?.rate ?? 1)
+        #else
         player.play()
+        #endif
     }
 
     func pause() {
@@ -105,25 +173,55 @@ class AVMediaPlayerProxy: VideoMediaPlayerProxy {
 
     func jumpForward(_ seconds: Duration) {
         let currentTime = player.currentTime()
-        let newTime = currentTime + CMTime(seconds: seconds.seconds, preferredTimescale: 1)
+        let newTime = currentTime + CMTime(seconds: seconds.seconds, preferredTimescale: 1000)
         player.seek(to: newTime, toleranceBefore: .zero, toleranceAfter: .zero)
     }
 
     func jumpBackward(_ seconds: Duration) {
         let currentTime = player.currentTime()
-        let newTime = max(.zero, currentTime - CMTime(seconds: seconds.seconds, preferredTimescale: 1))
+        let newTime = max(.zero, currentTime - CMTime(seconds: seconds.seconds, preferredTimescale: 1000))
         player.seek(to: newTime, toleranceBefore: .zero, toleranceAfter: .zero)
     }
 
     func setSeconds(_ seconds: Duration) {
-        let time = CMTime(seconds: seconds.seconds, preferredTimescale: 1)
+        let time = CMTime(seconds: seconds.seconds, preferredTimescale: 1000)
         player.seek(to: time, toleranceBefore: .zero, toleranceAfter: .zero)
     }
 
-    // TODO: complete
-    func setRate(_ rate: Float) {}
+    func setRate(_ rate: Float) {
+        player.defaultRate = rate
+        if player.timeControlStatus != .paused {
+            player.rate = rate
+        }
+    }
+
+    // MARK: - Tracks
+
+    /// Jellyfin audio switches always rebuild the stream (its HLS carries one audio track); nothing to do in place.
     func setAudioStream(_ stream: MediaStream) {}
-    func setSubtitleStream(_ stream: MediaStream) {}
+
+    /// Selects the subtitle rendition for the Jellyfin stream index in `stream`, or none for -1.
+    ///
+    /// Jellyfin lists every text subtitle of the source in the manifest, in source order, once a subtitle was requested
+    /// over HLS. So the n-th legible option is the n-th text subtitle stream.
+    func setSubtitleStream(_ stream: MediaStream) {
+        guard let item = player.currentItem,
+              let group = item.asset.mediaSelectionGroup(forMediaCharacteristic: .legible)
+        else { return }
+
+        let options = group.options.filter { $0.mediaType == .subtitle }
+        let textIndexes = manager?.playbackItem?.textSubtitleStreamIndexes ?? []
+
+        guard let index = stream.index, index != -1,
+              let position = textIndexes.firstIndex(of: index),
+              options.indices.contains(position)
+        else {
+            item.select(nil, in: group)
+            return
+        }
+
+        item.select(options[position], in: group)
+    }
 
     func setAspectFill(_ aspectFill: Bool) {
         avPlayerLayer.videoGravity = aspectFill ? .resizeAspectFill : .resizeAspect
@@ -137,87 +235,262 @@ class AVMediaPlayerProxy: VideoMediaPlayerProxy {
 
 extension AVMediaPlayerProxy {
 
+    private func removeItemObservers() {
+        if let timeObserver {
+            player.removeTimeObserver(timeObserver)
+            self.timeObserver = nil
+        }
+
+        if let endObserver {
+            NotificationCenter.default.removeObserver(endObserver)
+            self.endObserver = nil
+        }
+
+        itemObservers.forEach { $0.invalidate() }
+        itemObservers = []
+    }
+
     private func playbackStopped() {
         player.pause()
-
-        if let timeObserver {
-            DispatchQueue.main.async {
-                self.player.removeTimeObserver(timeObserver)
-                self.timeObserver = nil
-            }
-        }
-
-        if let statusObserver {
-            statusObserver.invalidate()
-            self.statusObserver = nil
-        }
-
-        if let timeControlStatusObserver {
-            timeControlStatusObserver.invalidate()
-            self.timeControlStatusObserver = nil
-        }
+        removeItemObservers()
+        #if os(iOS)
+        firstFrameWatch?.cancel()
+        #endif
     }
 
     private func playNew(item: MediaPlayerItem) {
-        let baseItem = item.baseItem
+        removeItemObservers()
 
-        let newAVPlayerItem = AVPlayerItem(url: item.url)
+        let baseItem = item.baseItem
+        var url = item.url
+        #if DEBUG
+        // Launch argument for testing the VLC fallback.
+        if ProcessInfo.processInfo.arguments.contains("-forceAppleEngineFailure") {
+            url = URL(string: "http://127.0.0.1:9/fail.m3u8")!
+        }
+        #endif
+        let newAVPlayerItem = AVPlayerItem(url: url)
         newAVPlayerItem.externalMetadata = item.baseItem.avMetadata
 
+        hasFirstFrame = false
+        didStartCurrentItem = false
         player.replaceCurrentItem(with: newAVPlayerItem)
 
-        // TODO: protect against paused
-//        rateObserver = player.observe(\.rate, options: [.new, .initial]) { _, value in
-//            DispatchQueue.main.async {
-//                self.manager?.set(rate: value.newValue ?? 1.0)
-//            }
-//        }
+        #if os(iOS)
+        if currentItemID != baseItem.id {
+            retriedItemID = nil
+        }
+        currentItemID = baseItem.id
+        fallbackRequest = .none
+        watchForFirstFrame()
+        #endif
 
-        timeControlStatusObserver = player.observe(\.timeControlStatus, options: [.new, .initial]) { player, _ in
-            let timeControlStatus = player.timeControlStatus
+        timeObserver = player.addPeriodicTimeObserver(
+            forInterval: CMTime(seconds: 0.25, preferredTimescale: 1000),
+            queue: .main
+        ) { [weak self] newTime in
+            guard newTime.isNumeric else { return }
+            let newSeconds = Duration.seconds(newTime.seconds)
 
-            DispatchQueue.main.async {
-                switch timeControlStatus {
-                case .paused:
-                    self.manager?.setPlaybackRequestStatus(status: .paused)
-                case .waitingToPlayAtSpecifiedRate: ()
-                // TODO: buffering
-                case .playing:
-                    self.manager?.setPlaybackRequestStatus(status: .playing)
-                @unknown default: ()
+            MainActor.assumeIsolated {
+                guard let self else { return }
+                if let containerState = self.containerState, !containerState.isScrubbing {
+                    containerState.scrubbedSeconds.value = newSeconds
                 }
+
+                self.manager?.seconds = newSeconds
             }
         }
 
-        // TODO: proper handling of none/unknown states
-        statusObserver = player.observe(\.currentItem?.status, options: [.new, .initial]) { _, value in
-            guard let newValue = value.newValue else { return }
-            switch newValue {
-            case .failed:
-                if let error = self.player.error {
-                    DispatchQueue.main.async {
+        #if os(iOS)
+        endObserver = NotificationCenter.default.addObserver(
+            forName: AVPlayerItem.didPlayToEndTimeNotification,
+            object: newAVPlayerItem,
+            queue: .main
+        ) { [weak self] _ in
+            MainActor.assumeIsolated {
+                guard let manager = self?.manager, manager.playbackItem?.baseItem.isLiveStream == false else { return }
+                manager.ended()
+            }
+        }
+        #endif
+
+        itemObservers.append(newAVPlayerItem.observe(\.presentationSize, options: [.new]) { [weak self] item, _ in
+            let size = item.presentationSize
+            DispatchQueue.main.async {
+                self?.videoSize.value = size
+            }
+        })
+
+        itemObservers.append(newAVPlayerItem.observe(\.status, options: [.new, .initial]) { [weak self] avItem, _ in
+            let status = avItem.status
+            DispatchQueue.main.async {
+                guard let self else { return }
+
+                switch status {
+                case .failed:
+                    #if os(iOS)
+                    self.evaluateFallback(failed: true, secondsWithoutFirstFrame: 0)
+                    #else
+                    if let error = self.player.error ?? avItem.error {
                         self.manager?.error(ErrorMessage("AVPlayer error: \(error.localizedDescription)"))
                     }
-                }
-            case .none, .readyToPlay, .unknown:
-                let startSeconds = max(.zero, (baseItem.startSeconds ?? .zero) - Duration.seconds(Defaults[.VideoPlayer.resumeOffset]))
+                    #endif
+                case .readyToPlay:
+                    guard !self.didStartCurrentItem else { return }
+                    self.didStartCurrentItem = true
 
-                self.player.seek(
-                    to: CMTimeMake(
-                        value: startSeconds.components.seconds,
-                        timescale: 1
-                    ),
-                    toleranceBefore: .zero,
-                    toleranceAfter: .zero,
-                    completionHandler: { _ in
-                        self.play()
+                    #if os(iOS)
+                    let selectedSubtitle = item.selectedSubtitleStreamIndex ?? -1
+                    self.setSubtitleStream(MediaStream(index: selectedSubtitle))
+                    #endif
+
+                    let resumeOffset = Duration.seconds(Defaults[.VideoPlayer.resumeOffset])
+                    let startSeconds = max(.zero, (baseItem.startSeconds ?? .zero) - resumeOffset)
+
+                    self.player.seek(
+                        to: CMTime(seconds: startSeconds.seconds, preferredTimescale: 1000),
+                        toleranceBefore: .zero,
+                        toleranceAfter: .zero
+                    ) { [weak self] _ in
+                        DispatchQueue.main.async {
+                            self?.play()
+                        }
                     }
-                )
-            @unknown default: ()
+                case .unknown:
+                    break
+                @unknown default:
+                    break
+                }
+            }
+        })
+    }
+}
+
+#if os(iOS)
+
+// MARK: - Fallback and Picture in Picture
+
+extension AVMediaPlayerProxy {
+
+    /// Mid-playback failures retry Apple once per item, then offer VLC; start-up failures switch to VLC.
+    private func evaluateFallback(failed: Bool, secondsWithoutFirstFrame: Double) {
+        let decision = fallbackDecision(
+            failed: failed,
+            secondsWithoutFirstFrame: secondsWithoutFirstFrame,
+            isBuffering: isBuffering.value,
+            hadFirstFrame: hasFirstFrame || (firstFrameItemID != nil && firstFrameItemID == currentItemID),
+            alreadyRetried: retriedItemID != nil && retriedItemID == currentItemID,
+            isPictureInPictureActive: isPictureInPictureActive
+        )
+
+        guard decision != .none else { return }
+
+        if decision == .retryApple {
+            retriedItemID = currentItemID
+        }
+
+        firstFrameWatch?.cancel()
+        manager?.logger.warning("Apple engine fallback: \(String(describing: decision))")
+        fallbackRequest = decision
+    }
+
+    private func watchForFirstFrame() {
+        firstFrameWatch?.cancel()
+        secondsWaitingForFirstFrame = 0
+        let startTime = player.currentTime().seconds
+
+        firstFrameWatch = Task { [weak self] in
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(1))
+                guard let self, !Task.isCancelled else { return }
+
+                // AirPlay shows nothing locally, and the layer can lag: playing time that moves counts as a frame.
+                let advanced = self.player.timeControlStatus == .playing
+                    && abs(self.player.currentTime().seconds - startTime) > 1
+                if self.player.isExternalPlaybackActive || advanced {
+                    self.hasFirstFrame = true
+                }
+
+                guard !self.hasFirstFrame else {
+                    self.firstFrameItemID = self.currentItemID
+                    return
+                }
+
+                // A paused player (e.g. paused by leaving the app) isn't failing to load.
+                if self.player.timeControlStatus != .paused {
+                    self.secondsWaitingForFirstFrame += 1
+                }
+                self.evaluateFallback(failed: false, secondsWithoutFirstFrame: self.secondsWaitingForFirstFrame)
+            }
+        }
+    }
+
+    /// Starts Picture in Picture automatically when the app goes to the background.
+    func setUpPictureInPicture() {
+        guard pictureInPictureController == nil, AVPictureInPictureController.isPictureInPictureSupported() else { return }
+
+        let delegate = PictureInPictureDelegate(proxy: self)
+        let controller = AVPictureInPictureController(playerLayer: avPlayerLayer)
+        controller?.canStartPictureInPictureAutomaticallyFromInline = true
+        controller?.delegate = delegate
+
+        pictureInPictureController = controller
+        pictureInPictureDelegate = delegate
+    }
+
+    fileprivate func pictureInPictureChanged(isActive: Bool, closedByUser: Bool) {
+        isPictureInPictureActive = isActive
+
+        // Closing the PiP window (AVKit pauses it) stops playback, like the player's close button. Reopening the app or
+        // another app taking PiP over doesn't.
+        guard closedByUser, player.timeControlStatus == .paused, UIApplication.shared.applicationState != .active,
+              let manager
+        else { return }
+
+        // Keep the app running long enough for the stop and position report to reach the server.
+        let backgroundTask = UIApplication.shared.beginBackgroundTask(withName: "Stop playback")
+        Task {
+            await manager.stop()
+            try? await Task.sleep(for: .seconds(5))
+            UIApplication.shared.endBackgroundTask(backgroundTask)
+        }
+    }
+
+    private final class PictureInPictureDelegate: NSObject, AVPictureInPictureControllerDelegate {
+
+        weak var proxy: AVMediaPlayerProxy?
+        private var isRestoring = false
+
+        init(proxy: AVMediaPlayerProxy) {
+            self.proxy = proxy
+        }
+
+        func pictureInPictureControllerWillStartPictureInPicture(_ controller: AVPictureInPictureController) {
+            isRestoring = false
+            Task { @MainActor [weak proxy] in
+                proxy?.pictureInPictureChanged(isActive: true, closedByUser: false)
+            }
+        }
+
+        func pictureInPictureController(
+            _ controller: AVPictureInPictureController,
+            restoreUserInterfaceForPictureInPictureStopWithCompletionHandler completionHandler: @escaping (Bool) -> Void
+        ) {
+            isRestoring = true
+            completionHandler(true)
+        }
+
+        func pictureInPictureControllerDidStopPictureInPicture(_ controller: AVPictureInPictureController) {
+            let closedByUser = !isRestoring
+            isRestoring = false
+            Task { @MainActor [weak proxy] in
+                proxy?.pictureInPictureChanged(isActive: false, closedByUser: closedByUser)
             }
         }
     }
 }
+#endif
 
 // MARK: - AVPlayerView
 
@@ -227,12 +500,8 @@ extension AVMediaPlayerProxy {
 
         @EnvironmentObject
         private var proxy: AVMediaPlayerProxy
-        @EnvironmentObject
-        private var scrubbedSeconds: PublishedBox<Duration>
 
         func makeUIView(context: Context) -> UIView {
-//            proxy.isScrubbing = context.environment.isScrubbing
-//            proxy.scrubbedSeconds = $scrubbedSeconds.value
             UIAVPlayerView(proxy: proxy)
         }
 

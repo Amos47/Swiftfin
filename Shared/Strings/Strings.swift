@@ -74,6 +74,8 @@ internal enum L10n {
   internal static let aired = L10n.tr("Localizable", "aired", fallback: "Aired")
   /// Aired episode order
   internal static let airedEpisodeOrder = L10n.tr("Localizable", "airedEpisodeOrder", fallback: "Aired episode order")
+  /// AirPlay
+  internal static let airPlay = L10n.tr("Localizable", "airPlay", fallback: "AirPlay")
   /// Air time
   internal static let airTime = L10n.tr("Localizable", "airTime", fallback: "Air time")
   /// Airs %s
@@ -142,6 +144,8 @@ internal enum L10n {
   internal static let aspectFill = L10n.tr("Localizable", "aspectFill", fallback: "Aspect fill")
   /// Audio
   internal static let audio = L10n.tr("Localizable", "audio", fallback: "Audio")
+  /// Audio & Subtitles
+  internal static let audioAndSubtitles = L10n.tr("Localizable", "audioAndSubtitles", fallback: "Audio & Subtitles")
   /// The audio bit depth is not supported
   internal static let audioBitDepthNotSupported = L10n.tr("Localizable", "audioBitDepthNotSupported", fallback: "The audio bit depth is not supported")
   /// Audio bitrate
@@ -1134,6 +1138,8 @@ internal enum L10n {
   internal static let newUser = L10n.tr("Localizable", "newUser", fallback: "New user")
   /// Next
   internal static let next = L10n.tr("Localizable", "next", fallback: "Next")
+  /// Next Episode
+  internal static let nextEpisode = L10n.tr("Localizable", "nextEpisode", fallback: "Next Episode")
   /// Next item
   internal static let nextItem = L10n.tr("Localizable", "nextItem", fallback: "Next item")
   /// Next Up
@@ -1254,6 +1260,12 @@ internal enum L10n {
   internal static let playAndPause = L10n.tr("Localizable", "playAndPause", fallback: "Play / Pause")
   /// Playback
   internal static let playback = L10n.tr("Localizable", "playback", fallback: "Playback")
+  /// Playback engine
+  internal static let playbackEngine = L10n.tr("Localizable", "playbackEngine", fallback: "Playback engine")
+  /// Automatic
+  internal static let playbackEngineAutomatic = L10n.tr("Localizable", "playbackEngineAutomatic", fallback: "Automatic")
+  /// VLC only
+  internal static let playbackEngineVLCOnly = L10n.tr("Localizable", "playbackEngineVLCOnly", fallback: "VLC only")
   /// Playback quality
   internal static let playbackQuality = L10n.tr("Localizable", "playbackQuality", fallback: "Playback quality")
   /// Force media from the server to transcode if it exceeds the selected resolution or bitrate.
@@ -1276,6 +1288,8 @@ internal enum L10n {
   internal static let playerSwiftfinDescription = L10n.tr("Localizable", "playerSwiftfinDescription", fallback: "Uses VLC's VLCKit to provide compatibility with nearly any file type. However, VLCKit cannot use HomePod or AirPlay-enabled speakers, HDR, Picture in Picture, or AirPlay casting.")
   /// Play From beginning
   internal static let playFromBeginning = L10n.tr("Localizable", "playFromBeginning", fallback: "Play From beginning")
+  /// Playing with VLC
+  internal static let playingWithVLC = L10n.tr("Localizable", "playingWithVLC", fallback: "Playing with VLC")
   /// Playlist
   internal static let playlist = L10n.tr("Localizable", "playlist", fallback: "Playlist")
   /// Playlists
@@ -1288,6 +1302,8 @@ internal enum L10n {
   internal static let playNextItem = L10n.tr("Localizable", "playNextItem", fallback: "Play next item")
   /// Play previous item
   internal static let playPreviousItem = L10n.tr("Localizable", "playPreviousItem", fallback: "Play previous item")
+  /// Play with VLC
+  internal static let playWithVLC = L10n.tr("Localizable", "playWithVLC", fallback: "Play with VLC")
   /// Portrait
   internal static let portrait = L10n.tr("Localizable", "portrait", fallback: "Portrait")
   /// Posters
@@ -1594,6 +1610,14 @@ internal enum L10n {
   internal static let simple = L10n.tr("Localizable", "simple", fallback: "Simple")
   /// Size
   internal static let size = L10n.tr("Localizable", "size", fallback: "Size")
+  /// Skip Credits
+  internal static let skipCredits = L10n.tr("Localizable", "skipCredits", fallback: "Skip Credits")
+  /// Skip Intro
+  internal static let skipIntro = L10n.tr("Localizable", "skipIntro", fallback: "Skip Intro")
+  /// Skip Preview
+  internal static let skipPreview = L10n.tr("Localizable", "skipPreview", fallback: "Skip Preview")
+  /// Skip Recap
+  internal static let skipRecap = L10n.tr("Localizable", "skipRecap", fallback: "Skip Recap")
   /// Slider
   internal static let slider = L10n.tr("Localizable", "slider", fallback: "Slider")
   /// Slow scrub
@@ -1618,6 +1642,8 @@ internal enum L10n {
   internal static let sourceCode = L10n.tr("Localizable", "sourceCode", fallback: "Source code")
   /// Special features
   internal static let specialFeatures = L10n.tr("Localizable", "specialFeatures", fallback: "Special features")
+  /// Locked
+  internal static let speedLocked = L10n.tr("Localizable", "speedLocked", fallback: "Locked")
   /// Splashscreen
   internal static let splashscreen = L10n.tr("Localizable", "splashscreen", fallback: "Splashscreen")
   /// When all servers are selected, use the splashscreen from a single server or a random server.

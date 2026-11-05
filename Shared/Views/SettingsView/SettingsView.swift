@@ -23,6 +23,8 @@ struct SettingsView: View {
 
     @Default(.VideoPlayer.videoPlayerType)
     private var videoPlayerType
+    @Default(.VideoPlayer.playbackEngine)
+    private var playbackEngine
 
     @Injected(\.userSessionManager)
     private var userSessionManager: UserSessionManager
@@ -122,7 +124,8 @@ struct SettingsView: View {
     private var videoPlayerSection: some View {
         Section(L10n.videoPlayer) {
             #if os(iOS)
-            Picker(L10n.videoPlayerType, selection: $videoPlayerType)
+            // Personal fork: iOS picks an engine; both use Swiftfin's controls.
+            Picker(L10n.playbackEngine, selection: $playbackEngine)
             #else
             ListRowMenu(L10n.videoPlayerType, selection: $videoPlayerType)
             #endif

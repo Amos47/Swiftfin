@@ -7,6 +7,7 @@
 //
 
 import Defaults
+import PlayerCore
 import SwiftUI
 
 // TODO: multitap refinements
@@ -226,32 +227,37 @@ extension VideoPlayer.UIVideoPlayerContainerViewController {
                 systemName: VideoPlayerActionButton.gestureLock.systemImage
             )
         case .playbackSpeed:
-            guard containerState.manager?.item.isLiveStream == false else { return }
+            // Personal fork: hold for speed, drag down while holding to lock it; the speed pill shows the state.
+            guard let manager = containerState.manager, manager.item.isLiveStream == false else { return }
+
+            let holdRate = Defaults[.VideoPlayer.Gesture.longPressSpeedMultiplier].rawValue
 
             switch state {
             case .began:
-                containerState.originalPlaybackRate = containerState.manager?.rate
-
-                let multiplier = Defaults[.VideoPlayer.Gesture.longPressSpeedMultiplier]
-
-                containerState.manager?.setRate(rate: multiplier.rawValue)
-
-                containerState.toastProxy.present(
-                    Text(multiplier.displayTitle),
-                    systemName: "forward.fill"
-                )
-
-            case .ended, .cancelled:
-                guard let originalRate = containerState.originalPlaybackRate else { return }
-                containerState.manager?.setRate(rate: originalRate)
-
-                containerState.originalPlaybackRate = nil
-
-                containerState.toastProxy.present(
-                    Text(originalRate, format: .playbackRate),
-                    systemName: "forward.fill"
-                )
-
+                var hold = containerState.speedHold ?? SpeedHold(holdRate: holdRate)
+                if hold.state == .idle, hold.holdRate != holdRate {
+                    hold = SpeedHold(holdRate: holdRate)
+                }
+                if let rate = hold.pressBegan(currentRate: manager.rate) {
+                    manager.isTemporaryRate = true
+                    manager.setRate(rate: rate)
+                }
+                containerState.speedHold = hold
+                containerState.speedHoldStart = location
+            case .changed:
+                guard var hold = containerState.speedHold, let start = containerState.speedHoldStart else { return }
+                hold.dragged(downBy: location.y - start.y)
+                if hold != containerState.speedHold {
+                    containerState.speedHold = hold
+                }
+            case .ended, .cancelled, .failed:
+                guard var hold = containerState.speedHold else { return }
+                if let rate = hold.pressEnded() {
+                    manager.isTemporaryRate = false
+                    manager.setRate(rate: rate)
+                }
+                containerState.speedHold = hold
+                containerState.speedHoldStart = nil
             default:
                 break
             }

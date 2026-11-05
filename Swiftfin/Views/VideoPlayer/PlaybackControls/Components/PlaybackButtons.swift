@@ -36,8 +36,9 @@ extension VideoPlayer.PlaybackControls {
             }
         }
 
+        // Personal fork: no jump buttons; double-tap the sides of the video to jump.
         private var shouldShowJumpButtons: Bool {
-            !manager.item.isLiveStream
+            false
         }
 
         private var playButton: some View {

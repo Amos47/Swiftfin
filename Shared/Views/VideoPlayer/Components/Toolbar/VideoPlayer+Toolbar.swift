@@ -76,9 +76,20 @@ extension VideoPlayer.PlaybackControls {
                 TitleView(item: manager.item)
                     .frame(maxWidth: .infinity, alignment: .leading)
 
+                #if os(iOS)
+                // Personal fork: only Audio & Subtitles and AirPlay; everything else lives in Settings.
+                HStack(spacing: Self.supplementButtonSpacing) {
+                    VideoPlayer.PlaybackControls.AudioSubtitlesButton()
+                        .frame(width: Self.buttonSize, height: Self.buttonSize)
+                    VideoPlayer.PlaybackControls.AirPlayButton()
+                        .frame(width: Self.buttonSize, height: Self.buttonSize)
+                }
+                .padding(.horizontal)
+                #else
                 ActionButtons()
                     .frame(height: Self.buttonSize)
                     .padding(.horizontal)
+                #endif
             }
             .font(.system(size: fontSize, weight: .semibold))
             .labelStyle(.iconOnly)
