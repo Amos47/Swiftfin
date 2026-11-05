@@ -80,8 +80,9 @@ public func fallbackDecision(
     alreadyRetried: Bool,
     isPictureInPictureActive: Bool
 ) -> FallbackDecision {
-    if hadFirstFrame || isPictureInPictureActive {
-        guard failed else { return .none }
+    if hadFirstFrame || isPictureInPictureActive || alreadyRetried {
+        let retryStalled = alreadyRetried && !hadFirstFrame && !isBuffering && secondsWithoutFirstFrame >= firstFrameTimeout
+        guard failed || retryStalled else { return .none }
         return alreadyRetried ? .offerVLC : .retryApple
     }
 

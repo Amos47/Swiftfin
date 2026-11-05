@@ -101,6 +101,11 @@ final class PlaybackDecisionsTests: XCTestCase {
         XCTAssertEqual(fallback(failed: true, hadFrame: true, retried: true), .offerVLC)
     }
 
+    func testRetryThatFailsBeforeFirstFrameOffersVLC() {
+        XCTAssertEqual(fallback(failed: true, retried: true), .offerVLC)
+        XCTAssertEqual(fallback(waited: 15, retried: true), .offerVLC)
+    }
+
     func testNoSwitchDuringPiP() {
         XCTAssertEqual(fallback(failed: true, hadFrame: true, pip: true), .retryApple)
         XCTAssertEqual(fallback(failed: true, hadFrame: true, retried: true, pip: true), .offerVLC)

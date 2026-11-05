@@ -138,6 +138,14 @@ struct VideoPlayerViewShim: View {
             }
         }
         #if os(iOS)
+        // Personal fork: each new item (next episode) picks its engine again; a fallback only lasts for its item.
+        .onChange(of: manager.item.id) {
+            let wantsAppleEngine = PlaybackEngine.usesAppleEngine(for: manager.item)
+            if wantsAppleEngine != usesAppleEngine {
+                manager.proxy?.stop()
+                usesAppleEngine = wantsAppleEngine
+            }
+        }
         // Personal fork: VLC can come back from the app switcher with a frozen picture over live audio. Seeking to
         // the current position redraws it.
         .onScenePhase(.inactive) {

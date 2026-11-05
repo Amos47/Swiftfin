@@ -63,10 +63,16 @@ class AVMediaPlayerProxy: VideoMediaPlayerProxy {
     private var firstFrameWatch: Task<Void, Never>?
     private var retriedItemID: String?
     private var currentItemID: String?
+    /// The base item that has shown a frame; survives rebuilds of the same item (subtitle switches, retries).
+    private var firstFrameItemID: String?
+    /// Seconds the current item has spent loading while not paused.
+    private var secondsWaitingForFirstFrame: Double = 0
 
     /// Leaving the app keeps playing: Picture in Picture is running or about to start.
     var keepsPlayingInBackground: Bool {
-        isPictureInPictureActive || (pictureInPictureController?.isPictureInPicturePossible ?? false)
+        player.isExternalPlaybackActive
+            || isPictureInPictureActive
+            || (pictureInPictureController?.isPictureInPicturePossible ?? false)
     }
     #endif
 
@@ -150,7 +156,11 @@ class AVMediaPlayerProxy: VideoMediaPlayerProxy {
     }
 
     func play() {
+        #if os(iOS)
         player.playImmediately(atRate: manager?.rate ?? 1)
+        #else
+        player.play()
+        #endif
     }
 
     func pause() {
@@ -292,6 +302,7 @@ extension AVMediaPlayerProxy {
             }
         }
 
+        #if os(iOS)
         endObserver = NotificationCenter.default.addObserver(
             forName: AVPlayerItem.didPlayToEndTimeNotification,
             object: newAVPlayerItem,
@@ -302,6 +313,7 @@ extension AVMediaPlayerProxy {
                 manager.ended()
             }
         }
+        #endif
 
         itemObservers.append(newAVPlayerItem.observe(\.presentationSize, options: [.new]) { [weak self] item, _ in
             let size = item.presentationSize
@@ -367,7 +379,7 @@ extension AVMediaPlayerProxy {
             failed: failed,
             secondsWithoutFirstFrame: secondsWithoutFirstFrame,
             isBuffering: isBuffering.value,
-            hadFirstFrame: hasFirstFrame,
+            hadFirstFrame: hasFirstFrame || (firstFrameItemID != nil && firstFrameItemID == currentItemID),
             alreadyRetried: retriedItemID != nil && retriedItemID == currentItemID,
             isPictureInPictureActive: isPictureInPictureActive
         )
@@ -385,13 +397,31 @@ extension AVMediaPlayerProxy {
 
     private func watchForFirstFrame() {
         firstFrameWatch?.cancel()
-        let started = Date.now
+        secondsWaitingForFirstFrame = 0
+        let startTime = player.currentTime().seconds
 
         firstFrameWatch = Task { [weak self] in
             while !Task.isCancelled {
                 try? await Task.sleep(for: .seconds(1))
-                guard let self, !Task.isCancelled, !self.hasFirstFrame else { return }
-                self.evaluateFallback(failed: false, secondsWithoutFirstFrame: Date.now.timeIntervalSince(started))
+                guard let self, !Task.isCancelled else { return }
+
+                // AirPlay shows nothing locally, and the layer can lag: playing time that moves counts as a frame.
+                let advanced = self.player.timeControlStatus == .playing
+                    && abs(self.player.currentTime().seconds - startTime) > 1
+                if self.player.isExternalPlaybackActive || advanced {
+                    self.hasFirstFrame = true
+                }
+
+                guard !self.hasFirstFrame else {
+                    self.firstFrameItemID = self.currentItemID
+                    return
+                }
+
+                // A paused player (e.g. paused by leaving the app) isn't failing to load.
+                if self.player.timeControlStatus != .paused {
+                    self.secondsWaitingForFirstFrame += 1
+                }
+                self.evaluateFallback(failed: false, secondsWithoutFirstFrame: self.secondsWaitingForFirstFrame)
             }
         }
     }
@@ -412,9 +442,18 @@ extension AVMediaPlayerProxy {
     fileprivate func pictureInPictureChanged(isActive: Bool, closedByUser: Bool) {
         isPictureInPictureActive = isActive
 
-        // Closing the PiP window stops playback, like the player's close button.
-        if closedByUser {
-            manager?.stop()
+        // Closing the PiP window (AVKit pauses it) stops playback, like the player's close button. Reopening the app or
+        // another app taking PiP over doesn't.
+        guard closedByUser, player.timeControlStatus == .paused, UIApplication.shared.applicationState != .active,
+              let manager
+        else { return }
+
+        // Keep the app running long enough for the stop and position report to reach the server.
+        let backgroundTask = UIApplication.shared.beginBackgroundTask(withName: "Stop playback")
+        Task {
+            await manager.stop()
+            try? await Task.sleep(for: .seconds(5))
+            UIApplication.shared.endBackgroundTask(backgroundTask)
         }
     }
 

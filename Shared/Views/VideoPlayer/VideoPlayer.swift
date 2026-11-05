@@ -69,12 +69,18 @@ struct VideoPlayer: View {
             manager.proxy = proxy
 
             // Personal fork: a player replacing another engine mid-item rebuilds the item at its position.
+            #if os(iOS)
             if manager.playbackItem != nil, let provider = manager.currentItemProvider() {
                 manager.playNewItem(provider: provider)
-                containerState.toastProxy.present(L10n.playingWithVLC)
+                if proxy is VLCMediaPlayerProxy {
+                    containerState.toastProxy.present(L10n.playingWithVLC)
+                }
             } else {
                 manager.start()
             }
+            #else
+            manager.start()
+            #endif
         }
         .prefersStatusBarHidden(!containerState.isPresentingOverlay)
         .onChange(of: audioOffset) {
@@ -128,6 +134,7 @@ struct VideoPlayer: View {
             #if os(iOS)
             if newState == .stopped {
                 showSeriesAfterClosing()
+                PlaybackEngine.vlcFallbackItemIDs.removeAll()
             }
             #endif
             if newState == .stopped, !isBeingDismissedByTransition {
