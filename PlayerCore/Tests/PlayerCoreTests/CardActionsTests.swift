@@ -13,10 +13,14 @@ final class CardActionsTests: XCTestCase {
 
     // MARK: - Tap
 
-    func testWideEpisodeMoviesSeriesPlayAnywhere() {
-        for kind in [CardItemKind.episode, .movie, .series] {
+    func testWideEpisodesAndMoviesPlayAnywhere() {
+        for kind in [CardItemKind.episode, .movie] {
             XCTAssertEqual(cardTap(kind: kind, isWide: true), .play)
         }
+    }
+
+    func testWideSeriesOpensItsPage() {
+        XCTAssertEqual(cardTap(kind: .series, isWide: true), .open)
     }
 
     func testOtherKindsOpen() {

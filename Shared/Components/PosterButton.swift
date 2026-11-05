@@ -8,6 +8,11 @@
 
 import SwiftUI
 
+#if os(iOS)
+import JellyfinAPI
+import PlayerCore
+#endif
+
 struct PosterButton<Item: Poster>: View {
 
     @Environment(\.viewContext)
@@ -39,6 +44,14 @@ struct PosterButton<Item: Poster>: View {
         self.size = size
         self.action = action
     }
+
+    #if os(iOS)
+    /// Personal fork: whether tapping this card plays it (wide episodes and movies), so its menu leaves out Play.
+    private var tapPlays: Bool {
+        guard wideCardTapPlays, let item = item as? BaseItemDto else { return false }
+        return cardTap(kind: item.cardKind, isWide: displayType == .landscape) == .play
+    }
+    #endif
 
     private var contextMenuPreview: some View {
         buttonLabel()
@@ -104,7 +117,7 @@ struct PosterButton<Item: Poster>: View {
                 .withViewContext(viewContext)
         }
         #if os(iOS)
-        .environment(\.cardTapPlays, wideCardTapPlays && displayType == .landscape)
+        .environment(\.cardTapPlays, tapPlays)
         #endif
     }
 }

@@ -21,9 +21,9 @@ public enum CardTap: Sendable, Equatable {
     case open
 }
 
-/// Wide cards play episodes, movies and series (next up), wherever they appear; everything else opens its page.
+/// Wide episode and movie cards play, wherever they appear; everything else, wide shows included, opens its page.
 public func cardTap(kind: CardItemKind, isWide: Bool) -> CardTap {
-    guard isWide, kind != .other else { return .open }
+    guard isWide, kind == .episode || kind == .movie else { return .open }
     return .play
 }
 
