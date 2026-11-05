@@ -61,6 +61,15 @@ final class ItemContentGroupProvider: ViewModel, ContentGroupProvider {
         )
     }
 
+    /// Personal fork: series on iPhone use the new series page (seasons in a drop-down, episodes in one list).
+    private func isIOSSeriesPage(_ item: BaseItemDto) -> Bool {
+        #if os(iOS)
+        item.type == .series
+        #else
+        false
+        #endif
+    }
+
     @ContentGroupBuilder
     private func _makeGroups(item: BaseItemDto, itemID: String) async throws -> [any ContentGroup] {
 
@@ -85,12 +94,22 @@ final class ItemContentGroupProvider: ViewModel, ContentGroupProvider {
             )
         }
 
+        #if os(iOS)
+        // Personal fork: the iPhone series page: details and actions, then one vertical episode list.
+        if item.type == .series {
+            SeriesOverviewGroup(provider: self)
+            SeriesEpisodeListGroup(parent: item, playButtonItem: mediaPlayerItemProvider?.item)
+        }
+        #endif
+
         switch item.type {
         case .season, .series:
-            SeriesEpisodeContentGroup(
-                parent: item,
-                playButtonItem: mediaPlayerItemProvider?.item
-            )
+            if !isIOSSeriesPage(item) {
+                SeriesEpisodeContentGroup(
+                    parent: item,
+                    playButtonItem: mediaPlayerItemProvider?.item
+                )
+            }
         default:
             []
         }
@@ -169,11 +188,13 @@ final class ItemContentGroupProvider: ViewModel, ContentGroupProvider {
             )
             .makeGroups(environment: .default)
         case .series:
-            try await ItemTypeContentGroupProvider(
-                itemTypes: [.season],
-                parent: item
-            )
-            .makeGroups(environment: .default)
+            if !isIOSSeriesPage(item) {
+                try await ItemTypeContentGroupProvider(
+                    itemTypes: [.season],
+                    parent: item
+                )
+                .makeGroups(environment: .default)
+            }
         case .channel, .liveTvChannel, .tvChannel:
             PosterGroup(
                 id: "channel-programs",
@@ -214,6 +235,12 @@ final class ItemContentGroupProvider: ViewModel, ContentGroupProvider {
                 posterSize: .small
             )
         }
+
+        #if os(iOS)
+        if item.type == .series {
+            ExternalLinksGroup(item: item)
+        }
+        #endif
 
         PosterGroup(
             id: "special-features",
@@ -269,73 +296,13 @@ final class ItemContentGroupProvider: ViewModel, ContentGroupProvider {
         )
     }
 
+    // Personal fork: the resolution moved to `ItemPlaybackResolver`, shared with Home cards that play on tap.
     private func resolveMediaPlayerItemProvider(
         for item: BaseItemDto,
         userSession: UserSession
     ) async throws -> MediaPlayerItemProvider? {
-        let playbackItem: BaseItemDto? = switch item.type {
-        case .series:
-            if let nextUp = try await nextUpItem(for: item) {
-                nextUp
-            } else if let resumeItem = try await resumeItem(for: item) {
-                resumeItem
-            } else {
-                try await firstAvailableItem(for: item)
-            }
-        case .season:
-            if let resumeItem = try await resumeItem(for: item) {
-                resumeItem
-            } else {
-                try await firstAvailableItem(for: item)
-            }
-        default:
-            item.isPlayable ? item : nil
-        }
-
+        let playbackItem = try await ItemPlaybackResolver.playbackItem(for: item, client: userSession.client)
         return playbackItem?.getPlaybackItemProvider(userSession: userSession)
-    }
-
-    private func nextUpItem(for item: BaseItemDto) async throws -> BaseItemDto? {
-        var parameters = Paths.GetNextUpParameters()
-        parameters.fields = .MinimumFields
-        parameters.seriesID = item.id
-
-        let request = Paths.getNextUp(parameters: parameters)
-        let response = try await send(request)
-
-        guard let item = response.value.items?.first, !item.isMissing else {
-            return nil
-        }
-
-        return item
-    }
-
-    private func resumeItem(for item: BaseItemDto) async throws -> BaseItemDto? {
-        var parameters = Paths.GetResumeItemsParameters()
-        parameters.fields = .MinimumFields
-        parameters.limit = 1
-        parameters.parentID = item.id
-
-        let request = Paths.getResumeItems(parameters: parameters)
-        let response = try await send(request)
-
-        return response.value.items?.first
-    }
-
-    private func firstAvailableItem(for item: BaseItemDto) async throws -> BaseItemDto? {
-        var parameters = Paths.GetItemsParameters()
-        parameters.fields = .MinimumFields
-        parameters.includeItemTypes = [.episode]
-        parameters.isMissing = false
-        parameters.isRecursive = true
-        parameters.limit = 1
-        parameters.parentID = item.id
-        parameters.sortOrder = [.ascending]
-
-        let request = Paths.getItems(parameters: parameters)
-        let response = try await send(request)
-
-        return response.value.items?.first
     }
 
     private func localTrailers(for item: BaseItemDto) async throws -> [BaseItemDto] {

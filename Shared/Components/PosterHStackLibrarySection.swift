@@ -8,6 +8,11 @@
 
 import SwiftUI
 
+#if os(iOS)
+import JellyfinAPI
+import PlayerCore
+#endif
+
 struct PosterHStackLibrarySection<Library: PagingLibrary>: View
     where Library.Element: LibraryElement, Library.Element: Poster
 {
@@ -37,6 +42,10 @@ struct PosterHStackLibrarySection<Library: PagingLibrary>: View
 
     @Router
     private var router
+
+    // Personal fork: Home rows play wide cards on tap (iPhone).
+    @Environment(\.homeCardTapPlays)
+    private var homeCardTapPlays
 
     let group: PosterGroup<Library>
 
@@ -121,6 +130,14 @@ struct PosterHStackLibrarySection<Library: PagingLibrary>: View
                     displayType: group.posterDisplayType,
                     size: group.posterSize
                 ) { element, namespace in
+                    #if os(iOS)
+                    if homeCardTapPlays, let item = element as? BaseItemDto,
+                       cardTap(kind: item.cardKind, isWide: group.posterDisplayType == .landscape, isHomeRow: true) == .play
+                    {
+                        item.play(router: router, in: namespace)
+                        return
+                    }
+                    #endif
                     element.libraryDidSelectElement(router: router, in: namespace)
                 }
                 .withViewContext(.isThumb)
