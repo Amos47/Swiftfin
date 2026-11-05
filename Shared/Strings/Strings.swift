@@ -1102,6 +1102,8 @@ internal enum L10n {
   internal static let missingCodecValues = L10n.tr("Localizable", "missingCodecValues", fallback: "Missing codec values")
   /// Mixer
   internal static let mixer = L10n.tr("Localizable", "mixer", fallback: "Mixer")
+  /// More actions
+  internal static let moreActions = L10n.tr("Localizable", "moreActions", fallback: "More actions")
   /// Movie
   internal static let movie = L10n.tr("Localizable", "movie", fallback: "Movie")
   /// Movies

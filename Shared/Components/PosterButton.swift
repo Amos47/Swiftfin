@@ -13,6 +13,10 @@ struct PosterButton<Item: Poster>: View {
     @Environment(\.viewContext)
     private var viewContext
 
+    // Personal fork: wide Home cards play on tap, so their menu also gets a visible "⋯" (iPhone).
+    @Environment(\.homeCardTapPlays)
+    private var homeCardTapPlays
+
     @Namespace
     private var namespace
 
@@ -82,7 +86,14 @@ struct PosterButton<Item: Poster>: View {
                 .trackingSize($posterSize)
             #endif
         }
-        .foregroundStyle(.primary, .secondary)
+        #if os(iOS)
+        .overlay(alignment: .topTrailing) {
+                if homeCardTapPlays, displayType == .landscape {
+                    CardMoreButton(item: item)
+                }
+            }
+        #endif
+            .foregroundStyle(.primary, .secondary)
         .buttonStyle(.borderless)
         .buttonBorderShape(.roundedRectangle)
         #if os(tvOS)
