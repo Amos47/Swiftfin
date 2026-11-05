@@ -17,20 +17,22 @@ struct SeriesEpisodeListGroup: ContentGroup, Identifiable {
 
     let id: String
     let playButtonItem: BaseItemDto?
+    let preferredSeasonID: String?
     let viewModel: PagingLibraryViewModel<SeasonViewModelLibrary>
 
     var _shouldBeResolved: Bool {
         viewModel.elements.isNotEmpty
     }
 
-    init(parent: BaseItemDto, playButtonItem: BaseItemDto? = nil) {
+    init(parent: BaseItemDto, playButtonItem: BaseItemDto? = nil, preferredSeasonID: String? = nil) {
         self.id = "\(parent.id ?? "parent")-episode-list"
         self.playButtonItem = playButtonItem
+        self.preferredSeasonID = preferredSeasonID
         self.viewModel = .init(library: SeasonViewModelLibrary(parent: parent), pageSize: 100)
     }
 
     func body(with viewModel: PagingLibraryViewModel<SeasonViewModelLibrary>) -> Body {
-        Body(viewModel: viewModel, playButtonItem: playButtonItem)
+        Body(viewModel: viewModel, playButtonItem: playButtonItem, preferredSeasonID: preferredSeasonID)
     }
 
     struct Body: View {
@@ -39,6 +41,7 @@ struct SeriesEpisodeListGroup: ContentGroup, Identifiable {
         var viewModel: PagingLibraryViewModel<SeasonViewModelLibrary>
 
         let playButtonItem: BaseItemDto?
+        let preferredSeasonID: String?
 
         @State
         private var selection: PagingLibraryViewModel<EpisodeLibrary>.ID?
@@ -156,6 +159,10 @@ struct SeriesEpisodeListGroup: ContentGroup, Identifiable {
         }
 
         private func preferredSeason() -> PagingLibraryViewModel<EpisodeLibrary>.ID? {
+            // A season card opened this page: show that season.
+            if let preferredSeasonID, viewModel.elements.contains(where: { $0.id == preferredSeasonID }) {
+                return preferredSeasonID
+            }
             if let seasonID = playButtonItem?.seasonID, viewModel.elements.contains(where: { $0.id == seasonID }) {
                 return seasonID
             }

@@ -319,9 +319,10 @@ private struct BaseItemDtoPosterContextMenu: View {
                     item.play(router: router, fromBeginning: true)
                 }
             case .goToItem:
-                if let itemID = item.id {
+                if item.id != nil {
                     Button(L10n.goToItem, systemImage: "info.circle") {
-                        router.route(to: .item(id: itemID))
+                        // By item, not ID, so a season opens its series page.
+                        router.route(to: .item(item: item))
                     }
                 }
             case .goToShow:
