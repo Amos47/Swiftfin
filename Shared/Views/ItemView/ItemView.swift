@@ -122,6 +122,11 @@ struct ItemView: View {
                         proxy.scrollTo(Component.header, anchor: .top)
                     }
                 }
+                .environment(\.scrollItemPage) { id, anchor in
+                    withAnimation(.easeInOut) {
+                        proxy.scrollTo(id, anchor: anchor)
+                    }
+                }
         }
         #else
         pageContent

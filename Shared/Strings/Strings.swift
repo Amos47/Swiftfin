@@ -930,6 +930,8 @@ internal enum L10n {
   internal static let jumpForward = L10n.tr("Localizable", "jumpForward", fallback: "Jump forward")
   /// Jump forward length
   internal static let jumpForwardLength = L10n.tr("Localizable", "jumpForwardLength", fallback: "Jump forward length")
+  /// Jump to my episode
+  internal static let jumpToMyEpisode = L10n.tr("Localizable", "jumpToMyEpisode", fallback: "Jump to my episode")
   /// Kids
   internal static let kids = L10n.tr("Localizable", "kids", fallback: "Kids")
   /// kbps
@@ -1522,6 +1524,8 @@ internal enum L10n {
   internal static let screenshot = L10n.tr("Localizable", "screenshot", fallback: "Screenshot")
   /// A screenshot or still frame captured directly from the item's video content. Deprecated and no longer actively used.
   internal static let screenshotImageDescription = L10n.tr("Localizable", "screenshotImageDescription", fallback: "A screenshot or still frame captured directly from the item's video content. Deprecated and no longer actively used.")
+  /// Scroll to bottom
+  internal static let scrollToBottom = L10n.tr("Localizable", "scrollToBottom", fallback: "Scroll to bottom")
   /// Scroll to top
   internal static let scrollToTop = L10n.tr("Localizable", "scrollToTop", fallback: "Scroll to top")
   /// Scrub
