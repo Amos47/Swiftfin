@@ -1522,6 +1522,8 @@ internal enum L10n {
   internal static let screenshot = L10n.tr("Localizable", "screenshot", fallback: "Screenshot")
   /// A screenshot or still frame captured directly from the item's video content. Deprecated and no longer actively used.
   internal static let screenshotImageDescription = L10n.tr("Localizable", "screenshotImageDescription", fallback: "A screenshot or still frame captured directly from the item's video content. Deprecated and no longer actively used.")
+  /// Scroll to top
+  internal static let scrollToTop = L10n.tr("Localizable", "scrollToTop", fallback: "Scroll to top")
   /// Scrub
   internal static let scrub = L10n.tr("Localizable", "scrub", fallback: "Scrub")
   /// Search

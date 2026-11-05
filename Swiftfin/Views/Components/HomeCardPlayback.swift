@@ -17,7 +17,8 @@ extension BaseItemDto {
     var cardKind: CardItemKind {
         switch type {
         case .episode: .episode
-        case .movie: .movie
+        // Recordings, music videos and extras play themselves, like a movie.
+        case .movie, .video, .musicVideo: .movie
         case .series: .series
         default: .other
         }

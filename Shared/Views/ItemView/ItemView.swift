@@ -113,6 +113,22 @@ struct ItemView: View {
     }
 
     private var content: some View {
+        #if os(iOS)
+        // Personal fork: lets the series page's pinned season bar scroll back to the top.
+        ScrollViewReader { proxy in
+            pageContent
+                .environment(\.scrollItemPageToTop) {
+                    withAnimation(.easeInOut) {
+                        proxy.scrollTo(Component.header, anchor: .top)
+                    }
+                }
+        }
+        #else
+        pageContent
+        #endif
+    }
+
+    private var pageContent: some View {
         Group {
             switch (isEnhanced || (isSeriesPage && hasBackdrop), isCompact || isSeriesPage) {
             case (true, true):

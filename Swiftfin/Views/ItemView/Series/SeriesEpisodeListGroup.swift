@@ -45,6 +45,45 @@ struct SeriesEpisodeListGroup: ContentGroup, Identifiable {
         /// The page scrolls to the current episode once, when it opens; switching seasons doesn't scroll.
         @State
         private var didAutoScroll = false
+        /// How far down the group the pinned season bar sits; nil when the season picker is on screen.
+        @State
+        private var pinnedBarOffset: CGFloat?
+        @Environment(\.scrollItemPageToTop)
+        private var scrollItemPageToTop
+
+        /// The top edge the pinned bar sticks to: under the status bar and the navigation bar.
+        private var pinnedTop: CGFloat {
+            let window = UIApplication.shared.connectedScenes
+                .compactMap { ($0 as? UIWindowScene)?.keyWindow }
+                .first
+            return (window?.safeAreaInsets.top ?? 47) + 44
+        }
+
+        private var pinnedBar: some View {
+            HStack {
+                SeriesEpisodeContentGroup.SeasonSelector(
+                    seasons: Array(viewModel.elements),
+                    selection: $selection,
+                    preferredSelection: selection ?? preferredSeason()
+                )
+
+                Spacer()
+
+                Button {
+                    scrollItemPageToTop?()
+                } label: {
+                    Image(systemName: "arrow.up")
+                        .font(.headline)
+                        .frame(width: 36, height: 36)
+                        .background(.thinMaterial, in: Circle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(L10n.scrollToTop)
+                .edgePadding(.trailing)
+            }
+            .padding(.vertical, 8)
+            .background(.bar)
+        }
 
         private var selectedSeason: PagingLibraryViewModel<EpisodeLibrary>? {
             viewModel.elements.first { $0.id == selection }
@@ -69,6 +108,29 @@ struct SeriesEpisodeListGroup: ContentGroup, Identifiable {
         }
 
         var body: some View {
+            content
+                // Personal fork: once the season picker scrolls under the navigation bar, a copy pins to the top with a
+                // button back to the top of the page.
+                    .background {
+                        GeometryReader { geometry in
+                            Color.clear
+                                .onChange(of: geometry.frame(in: .global).minY, initial: true) { _, minY in
+                                    let scrolledPast = pinnedTop - minY
+                                    pinnedBarOffset = scrolledPast > 0
+                                        ? min(scrolledPast, max(0, geometry.size.height - 60))
+                                        : nil
+                                }
+                        }
+                    }
+                    .overlay(alignment: .top) {
+                        if let pinnedBarOffset {
+                            pinnedBar
+                                .offset(y: pinnedBarOffset)
+                        }
+                    }
+        }
+
+        private var content: some View {
             VStack(alignment: .leading, spacing: 12) {
                 SeriesEpisodeContentGroup.SeasonSelector(
                     seasons: Array(viewModel.elements),
