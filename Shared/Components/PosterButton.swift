@@ -13,9 +13,9 @@ struct PosterButton<Item: Poster>: View {
     @Environment(\.viewContext)
     private var viewContext
 
-    // Personal fork: wide Home cards play on tap, so their menu also gets a visible "⋯" (iPhone).
-    @Environment(\.homeCardTapPlays)
-    private var homeCardTapPlays
+    // Personal fork: wide cards play on tap, so their menu also gets a visible "⋯" (iPhone).
+    @Environment(\.wideCardTapPlays)
+    private var wideCardTapPlays
 
     @Namespace
     private var namespace
@@ -88,7 +88,7 @@ struct PosterButton<Item: Poster>: View {
         }
         #if os(iOS)
         .overlay(alignment: .topTrailing) {
-                if homeCardTapPlays, displayType == .landscape {
+                if wideCardTapPlays, displayType == .landscape {
                     CardMoreButton(item: item)
                 }
             }
@@ -104,7 +104,7 @@ struct PosterButton<Item: Poster>: View {
                 .withViewContext(viewContext)
         }
         #if os(iOS)
-        .environment(\.cardTapPlays, homeCardTapPlays && displayType == .landscape)
+        .environment(\.cardTapPlays, wideCardTapPlays && displayType == .landscape)
         #endif
     }
 }

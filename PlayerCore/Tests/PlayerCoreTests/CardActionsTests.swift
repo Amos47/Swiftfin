@@ -13,23 +13,19 @@ final class CardActionsTests: XCTestCase {
 
     // MARK: - Tap
 
-    func testWideHomeEpisodeMoviesSeriesPlay() {
+    func testWideEpisodeMoviesSeriesPlayAnywhere() {
         for kind in [CardItemKind.episode, .movie, .series] {
-            XCTAssertEqual(cardTap(kind: kind, isWide: true, isHomeRow: true), .play)
+            XCTAssertEqual(cardTap(kind: kind, isWide: true), .play)
         }
     }
 
     func testOtherKindsOpen() {
-        XCTAssertEqual(cardTap(kind: .other, isWide: true, isHomeRow: true), .open)
+        XCTAssertEqual(cardTap(kind: .other, isWide: true), .open)
     }
 
     func testPostersOpen() {
-        XCTAssertEqual(cardTap(kind: .episode, isWide: false, isHomeRow: true), .open)
-        XCTAssertEqual(cardTap(kind: .series, isWide: false, isHomeRow: true), .open)
-    }
-
-    func testNonHomeWideOpens() {
-        XCTAssertEqual(cardTap(kind: .episode, isWide: true, isHomeRow: false), .open)
+        XCTAssertEqual(cardTap(kind: .episode, isWide: false), .open)
+        XCTAssertEqual(cardTap(kind: .series, isWide: false), .open)
     }
 
     // MARK: - Menu

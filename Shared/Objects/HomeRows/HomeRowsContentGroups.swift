@@ -34,7 +34,6 @@ struct HomeRowPosterGroup: ContentGroup {
     func body(with viewModel: PagingLibraryViewModel<HomeRowLibrary>) -> some View {
         group.body(with: viewModel)
             .environment(\.useSeriesLandscapeBackdrop, false)
-            .environment(\.homeCardTapPlays, true)
     }
 }
 

@@ -8,12 +8,18 @@
 
 import SwiftUI
 
-// Personal fork: set by Home rows, where tapping a wide card plays it (iPhone). Off everywhere else, and on tvOS.
+// Personal fork: on iPhone, tapping a wide card plays it, everywhere (Home, libraries, search, item pages). Off on tvOS.
 
 extension EnvironmentValues {
 
     @Entry
-    var homeCardTapPlays: Bool = false
+    var wideCardTapPlays: Bool = {
+        #if os(iOS)
+        true
+        #else
+        false
+        #endif
+    }()
 
     /// Whether tapping the card this menu belongs to already plays it, so the menu leaves out Play.
     @Entry
