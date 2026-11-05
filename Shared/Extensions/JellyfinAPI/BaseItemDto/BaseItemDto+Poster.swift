@@ -304,7 +304,8 @@ private struct BaseItemDtoPosterContextMenu: View {
             tapPlays: cardTapPlays,
             hasProgress: hasProgress,
             isPlayed: isPlayed,
-            isFavourite: isFavorite
+            isFavourite: isFavorite,
+            canMarkWatched: item.canBePlayed
         )
 
         ForEach(Array(items.enumerated()), id: \.offset) { _, menuItem in

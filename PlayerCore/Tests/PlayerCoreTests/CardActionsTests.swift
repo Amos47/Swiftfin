@@ -68,8 +68,27 @@ final class CardActionsTests: XCTestCase {
     }
 
     func testOtherKindHasNoPlay() {
-        let items = cardMenuItems(kind: .other, tapPlays: false, hasProgress: true, isPlayed: false, isFavourite: false)
+        let items = cardMenuItems(
+            kind: .other,
+            tapPlays: false,
+            hasProgress: true,
+            isPlayed: false,
+            isFavourite: false,
+            canMarkWatched: false
+        )
         XCTAssertEqual(items, [.goToItem, .favourite(true)])
+    }
+
+    func testSeasonsAndCollectionsCanStillBeMarkedWatched() {
+        let items = cardMenuItems(
+            kind: .other,
+            tapPlays: false,
+            hasProgress: false,
+            isPlayed: false,
+            isFavourite: false,
+            canMarkWatched: true
+        )
+        XCTAssertEqual(items, [.goToItem, .markWatched(true), .favourite(true)])
     }
 
     // MARK: - Action row

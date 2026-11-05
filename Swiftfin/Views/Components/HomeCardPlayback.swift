@@ -26,7 +26,12 @@ extension BaseItemDto {
     /// Plays the item (a series plays next up), or opens its page when there's nothing to play.
     @MainActor
     func play(router: Router.Wrapper, in namespace: Namespace.ID? = nil, fromBeginning: Bool = false) {
+        // A series resolves next up over the network first: a second tap meanwhile must not open a second player.
+        guard !CardPlayback.isResolving else { return }
+        CardPlayback.isResolving = true
+
         Task { @MainActor in
+            defer { CardPlayback.isResolving = false }
             if let playback = try? await ItemPlaybackResolver.playback(for: self, fromBeginning: fromBeginning) {
                 router.route(to: .videoPlayer(provider: playback.provider, queue: playback.queue))
             } else if let namespace {
@@ -36,6 +41,11 @@ extension BaseItemDto {
             }
         }
     }
+}
+
+@MainActor
+private enum CardPlayback {
+    static var isResolving = false
 }
 
 /// The "⋯" on a wide Home card: the card's menu, for when tapping the card would play it.

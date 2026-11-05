@@ -42,6 +42,9 @@ struct SeriesEpisodeListGroup: ContentGroup, Identifiable {
 
         @State
         private var selection: PagingLibraryViewModel<EpisodeLibrary>.ID?
+        /// The page scrolls to the current episode once, when it opens; switching seasons doesn't scroll.
+        @State
+        private var didAutoScroll = false
 
         private var selectedSeason: PagingLibraryViewModel<EpisodeLibrary>? {
             viewModel.elements.first { $0.id == selection }
@@ -74,8 +77,8 @@ struct SeriesEpisodeListGroup: ContentGroup, Identifiable {
                 )
 
                 if let selectedSeason {
-                    SeasonEpisodeRows(season: selectedSeason, preferredID: playButtonItem?.id)
-                        .id(selectedSeason.id)
+                    SeasonEpisodeRows(season: selectedSeason, preferredID: playButtonItem?.id, didAutoScroll: $didAutoScroll)
+                        .id(ObjectIdentifier(selectedSeason))
                 } else {
                     ProgressView()
                         .frame(maxWidth: .infinity)
@@ -102,8 +105,8 @@ private struct SeasonEpisodeRows: View {
 
     let preferredID: String?
 
-    @State
-    private var didScroll = false
+    @Binding
+    var didAutoScroll: Bool
 
     private var episodes: [BaseItemDto] {
         Array(season.elements)
@@ -123,14 +126,42 @@ private struct SeasonEpisodeRows: View {
     }
 
     var body: some View {
+        let currentID = currentID
+
         ScrollViewReader { proxy in
-            LazyVStack(alignment: .leading, spacing: 10) {
+            VStack(alignment: .leading, spacing: 10) {
+                if episodes.isEmpty {
+                    switch season.state {
+                    case .error:
+                        VStack(spacing: 8) {
+                            Text(season.error?.localizedDescription ?? L10n.unknownError)
+                                .font(.footnote)
+                                .foregroundStyle(.secondary)
+                                .multilineTextAlignment(.center)
+                            Button(L10n.retry) {
+                                season.refresh()
+                            }
+                            .buttonStyle(.bordered)
+                        }
+                        .frame(maxWidth: .infinity)
+                    default:
+                        ProgressView()
+                            .frame(maxWidth: .infinity, minHeight: 80)
+                    }
+                }
+
                 ForEach(episodes, id: \.id) { episode in
                     SeriesEpisodeRow(episode: episode, isCurrent: episode.id == currentID)
                         .id(episode.id)
                 }
             }
             .edgePadding(.horizontal)
+            .task(id: ObjectIdentifier(season)) {
+                // A refreshed page hands over new, unloaded seasons: load the one on screen.
+                if season.state == .initial {
+                    season.refresh()
+                }
+            }
             .onChange(of: episodes.count) {
                 scrollToCurrent(proxy)
             }
@@ -142,11 +173,11 @@ private struct SeasonEpisodeRows: View {
 
     /// Brings the current episode into view once, unless it's the first in the list (the page is already there).
     private func scrollToCurrent(_ proxy: ScrollViewProxy) {
-        guard !didScroll, let currentID, episodes.first?.id != currentID,
-              episodes.contains(where: { $0.id == currentID })
-        else { return }
+        guard !didAutoScroll, let currentID, episodes.contains(where: { $0.id == currentID }) else { return }
 
-        didScroll = true
+        didAutoScroll = true
+        guard episodes.first?.id != currentID else { return }
+
         Task { @MainActor in
             try? await Task.sleep(for: .milliseconds(300))
             withAnimation(.easeInOut) {

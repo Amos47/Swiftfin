@@ -39,12 +39,16 @@ public enum CardMenuItem: Sendable, Equatable {
 }
 
 /// The card menu, in order. Play is left out where tapping the card already plays.
+///
+/// - Parameter canMarkWatched: whether the item can be marked watched (seasons, box sets and folders can, though they
+///   don't play from a card); nil means only episodes, movies and series.
 public func cardMenuItems(
     kind: CardItemKind,
     tapPlays: Bool,
     hasProgress: Bool,
     isPlayed: Bool,
-    isFavourite: Bool
+    isFavourite: Bool,
+    canMarkWatched: Bool? = nil
 ) -> [CardMenuItem] {
     var items: [CardMenuItem] = []
     let isPlayable = kind != .other
@@ -61,7 +65,7 @@ public func cardMenuItems(
     if kind == .episode {
         items.append(.goToShow)
     }
-    if isPlayable {
+    if canMarkWatched ?? isPlayable {
         items.append(.markWatched(!isPlayed))
     }
 

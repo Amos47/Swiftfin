@@ -61,7 +61,7 @@ final class ItemContentGroupProvider: ViewModel, ContentGroupProvider {
         )
     }
 
-    /// Personal fork: series on iPhone use the new series page (genres in its details line, seasons in a drop-down).
+    /// Personal fork: series on iPhone use the new series page (seasons in a drop-down, episodes in one list).
     private func isIOSSeriesPage(_ item: BaseItemDto) -> Bool {
         #if os(iOS)
         item.type == .series
@@ -114,7 +114,7 @@ final class ItemContentGroupProvider: ViewModel, ContentGroupProvider {
             []
         }
 
-        if let genres = item.itemGenres, genres.isNotEmpty, !isIOSSeriesPage(item) {
+        if let genres = item.itemGenres, genres.isNotEmpty {
             PillGroup(
                 displayTitle: L10n.genres,
                 id: "genres",
