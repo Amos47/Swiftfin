@@ -50,6 +50,8 @@ struct SeriesEpisodeListGroup: ContentGroup, Identifiable {
         private var pinnedBarOffset: CGFloat?
         @Environment(\.scrollItemPageToTop)
         private var scrollItemPageToTop
+        @Environment(\.scrollItemPage)
+        private var scrollItemPage
 
         /// The top edge the pinned bar sticks to: under the status bar and the navigation bar.
         private var pinnedTop: CGFloat {
@@ -59,7 +61,73 @@ struct SeriesEpisodeListGroup: ContentGroup, Identifiable {
             return (window?.safeAreaInsets.top ?? 47) + 44
         }
 
-        private var pinnedBar: some View {
+        private func jumpButton(_ systemImage: String, label: String, action: @escaping () -> Void) -> some View {
+            Button(action: action) {
+                Image(systemName: systemImage)
+                    .font(.subheadline.weight(.semibold))
+                    .frame(width: 36, height: 36)
+                    .background(.thinMaterial, in: Circle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(label)
+        }
+
+        /// The episode to jump back to: the one in progress or up next, else the current one in this season.
+        private var myEpisode: (seasonID: String?, episodeID: String)? {
+            if let item = playButtonItem, let id = item.id, item.type == .episode {
+                return (item.seasonID, id)
+            }
+            guard let selectedSeason else { return nil }
+            let progress = selectedSeason.elements.map {
+                EpisodeProgress(
+                    id: $0.id ?? "",
+                    isPlayed: $0.userData?.isPlayed == true,
+                    progress: ($0.userData?.playedPercentage ?? 0) / 100
+                )
+            }
+            return currentEpisodeID(in: progress, preferredID: nil).map { (selection, $0) }
+        }
+
+        private func jumpToMyEpisode() {
+            guard let myEpisode else { return }
+
+            if let seasonID = myEpisode.seasonID, seasonID != selection,
+               viewModel.elements.contains(where: { $0.id == seasonID })
+            {
+                // Switch season first; its rows need a moment to load before they can be scrolled to.
+                selection = seasonID
+                Task { @MainActor in
+                    try? await Task.sleep(for: .milliseconds(700))
+                    scrollItemPage?(myEpisode.episodeID, .center)
+                }
+            } else {
+                scrollItemPage?(myEpisode.episodeID, .center)
+            }
+        }
+
+        /// Top of the page, my episode, end of the season.
+        private var jumpButtons: some View {
+            HStack(spacing: 8) {
+                jumpButton("arrow.up.to.line", label: L10n.scrollToTop) {
+                    scrollItemPageToTop?()
+                }
+
+                if myEpisode != nil {
+                    jumpButton("play.circle", label: L10n.jumpToMyEpisode) {
+                        jumpToMyEpisode()
+                    }
+                }
+
+                jumpButton("arrow.down.to.line", label: L10n.scrollToBottom) {
+                    if let lastID = selectedSeason?.elements.last?.id {
+                        scrollItemPage?(lastID, .bottom)
+                    }
+                }
+            }
+            .edgePadding(.trailing)
+        }
+
+        private var seasonHeader: some View {
             HStack {
                 SeriesEpisodeContentGroup.SeasonSelector(
                     seasons: Array(viewModel.elements),
@@ -69,20 +137,18 @@ struct SeriesEpisodeListGroup: ContentGroup, Identifiable {
 
                 Spacer()
 
-                Button {
-                    scrollItemPageToTop?()
-                } label: {
-                    Image(systemName: "arrow.up")
-                        .font(.headline)
-                        .frame(width: 36, height: 36)
-                        .background(.thinMaterial, in: Circle())
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel(L10n.scrollToTop)
-                .edgePadding(.trailing)
+                jumpButtons
             }
-            .padding(.vertical, 8)
-            .background(.bar)
+        }
+
+        private var pinnedBar: some View {
+            seasonHeader
+                .padding(.vertical, 8)
+                // Solid, and reaching up behind the navigation bar so nothing shows through above it.
+                .background(alignment: .bottom) {
+                    Color(uiColor: .systemBackground)
+                        .padding(.top, -pinnedTop)
+                }
         }
 
         private var selectedSeason: PagingLibraryViewModel<EpisodeLibrary>? {
@@ -132,11 +198,7 @@ struct SeriesEpisodeListGroup: ContentGroup, Identifiable {
 
         private var content: some View {
             VStack(alignment: .leading, spacing: 12) {
-                SeriesEpisodeContentGroup.SeasonSelector(
-                    seasons: Array(viewModel.elements),
-                    selection: $selection,
-                    preferredSelection: selection ?? preferredSeason()
-                )
+                seasonHeader
 
                 if let selectedSeason {
                     SeasonEpisodeRows(season: selectedSeason, preferredID: playButtonItem?.id, didAutoScroll: $didAutoScroll)
@@ -170,6 +232,9 @@ private struct SeasonEpisodeRows: View {
     @Binding
     var didAutoScroll: Bool
 
+    @Environment(\.scrollItemPage)
+    private var scrollItemPage
+
     private var episodes: [BaseItemDto] {
         Array(season.elements)
     }
@@ -190,51 +255,49 @@ private struct SeasonEpisodeRows: View {
     var body: some View {
         let currentID = currentID
 
-        ScrollViewReader { proxy in
-            VStack(alignment: .leading, spacing: 10) {
-                if episodes.isEmpty {
-                    switch season.state {
-                    case .error:
-                        VStack(spacing: 8) {
-                            Text(season.error?.localizedDescription ?? L10n.unknownError)
-                                .font(.footnote)
-                                .foregroundStyle(.secondary)
-                                .multilineTextAlignment(.center)
-                            Button(L10n.retry) {
-                                season.refresh()
-                            }
-                            .buttonStyle(.bordered)
+        VStack(alignment: .leading, spacing: 10) {
+            if episodes.isEmpty {
+                switch season.state {
+                case .error:
+                    VStack(spacing: 8) {
+                        Text(season.error?.localizedDescription ?? L10n.unknownError)
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                            .multilineTextAlignment(.center)
+                        Button(L10n.retry) {
+                            season.refresh()
                         }
-                        .frame(maxWidth: .infinity)
-                    default:
-                        ProgressView()
-                            .frame(maxWidth: .infinity, minHeight: 80)
+                        .buttonStyle(.bordered)
                     }
+                    .frame(maxWidth: .infinity)
+                default:
+                    ProgressView()
+                        .frame(maxWidth: .infinity, minHeight: 80)
                 }
+            }
 
-                ForEach(episodes, id: \.id) { episode in
-                    SeriesEpisodeRow(episode: episode, isCurrent: episode.id == currentID)
-                        .id(episode.id)
-                }
+            ForEach(episodes, id: \.id) { episode in
+                SeriesEpisodeRow(episode: episode, isCurrent: episode.id == currentID)
+                    .id(episode.id)
             }
-            .edgePadding(.horizontal)
-            .task(id: ObjectIdentifier(season)) {
-                // A refreshed page hands over new, unloaded seasons: load the one on screen.
-                if season.state == .initial {
-                    season.refresh()
-                }
+        }
+        .edgePadding(.horizontal)
+        .task(id: ObjectIdentifier(season)) {
+            // A refreshed page hands over new, unloaded seasons: load the one on screen.
+            if season.state == .initial {
+                season.refresh()
             }
-            .onChange(of: episodes.count) {
-                scrollToCurrent(proxy)
-            }
-            .onAppear {
-                scrollToCurrent(proxy)
-            }
+        }
+        .onChange(of: episodes.count) {
+            scrollToCurrent()
+        }
+        .onAppear {
+            scrollToCurrent()
         }
     }
 
     /// Brings the current episode into view once, unless it's the first in the list (the page is already there).
-    private func scrollToCurrent(_ proxy: ScrollViewProxy) {
+    private func scrollToCurrent() {
         guard !didAutoScroll, let currentID, episodes.contains(where: { $0.id == currentID }) else { return }
 
         didAutoScroll = true
@@ -242,9 +305,7 @@ private struct SeasonEpisodeRows: View {
 
         Task { @MainActor in
             try? await Task.sleep(for: .milliseconds(300))
-            withAnimation(.easeInOut) {
-                proxy.scrollTo(currentID, anchor: .center)
-            }
+            scrollItemPage?(currentID, .center)
         }
     }
 }

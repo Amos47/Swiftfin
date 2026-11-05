@@ -8,10 +8,15 @@
 
 import SwiftUI
 
-// Personal fork: scrolls the item page back to its header; provided by `ItemView` on iPhone.
+// Personal fork: scroll actions for the item page, provided by `ItemView` on iPhone.
 
 extension EnvironmentValues {
 
+    /// Scrolls the item page back to its header.
     @Entry
     var scrollItemPageToTop: (() -> Void)? = nil
+
+    /// Scrolls the item page to the view with this id (e.g. an episode row).
+    @Entry
+    var scrollItemPage: ((AnyHashable, UnitPoint) -> Void)? = nil
 }
