@@ -14,4 +14,8 @@ extension EnvironmentValues {
 
     @Entry
     var homeCardTapPlays: Bool = false
+
+    /// Whether tapping the card this menu belongs to already plays it, so the menu leaves out Play.
+    @Entry
+    var cardTapPlays: Bool = false
 }

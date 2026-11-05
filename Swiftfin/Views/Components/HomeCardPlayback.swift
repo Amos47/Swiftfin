@@ -46,6 +46,7 @@ struct CardMoreButton<Item: Poster>: View {
     var body: some View {
         Menu {
             item.posterContextMenu
+                .environment(\.cardTapPlays, true)
         } label: {
             Image(systemName: "ellipsis")
                 .font(.footnote.weight(.bold))

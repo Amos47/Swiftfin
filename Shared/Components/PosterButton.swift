@@ -103,5 +103,8 @@ struct PosterButton<Item: Poster>: View {
             contextMenuPreview
                 .withViewContext(viewContext)
         }
+        #if os(iOS)
+        .environment(\.cardTapPlays, homeCardTapPlays && displayType == .landscape)
+        #endif
     }
 }

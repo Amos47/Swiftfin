@@ -12,6 +12,10 @@ import Get
 import JellyfinAPI
 import SwiftUI
 
+#if os(iOS)
+import PlayerCore
+#endif
+
 extension BaseItemDto: Poster {
 
     struct Environment: WithDefaultValue, WithImageSourceOptions, WithViewContext {
@@ -263,6 +267,10 @@ private struct BaseItemDtoPosterContextMenu: View {
     @Router
     private var router
 
+    // Personal fork: the iPhone card menu leaves out Play where tapping the card already plays.
+    @Environment(\.cardTapPlays)
+    private var cardTapPlays
+
     @State
     private var item: BaseItemDto
 
@@ -279,6 +287,67 @@ private struct BaseItemDtoPosterContextMenu: View {
     }
 
     var body: some View {
+        #if os(iOS)
+        iOSMenu
+        #else
+        tvOSMenu
+        #endif
+    }
+
+    #if os(iOS)
+    /// Personal fork: the card menu from `cardMenuItems`, with Play and Play from beginning.
+    @ViewBuilder
+    private var iOSMenu: some View {
+        let hasProgress = (item.userData?.playbackPositionTicks ?? 0) > 0
+        let items = cardMenuItems(
+            kind: item.cardKind,
+            tapPlays: cardTapPlays,
+            hasProgress: hasProgress,
+            isPlayed: isPlayed,
+            isFavourite: isFavorite
+        )
+
+        ForEach(Array(items.enumerated()), id: \.offset) { _, menuItem in
+            switch menuItem {
+            case .play:
+                Button(L10n.play, systemImage: "play.fill") {
+                    item.play(router: router)
+                }
+            case .playFromBeginning:
+                Button(L10n.playFromBeginning, systemImage: "arrow.counterclockwise") {
+                    item.play(router: router, fromBeginning: true)
+                }
+            case .goToItem:
+                if let itemID = item.id {
+                    Button(L10n.goToItem, systemImage: "info.circle") {
+                        router.route(to: .item(id: itemID))
+                    }
+                }
+            case .goToShow:
+                if let seriesID = item.seriesID {
+                    Button(L10n.goToSeries, systemImage: "tv") {
+                        router.route(to: .item(id: seriesID))
+                    }
+                }
+            case let .markWatched(markWatched):
+                Button(markWatched ? L10n.markAsPlayed : L10n.markAsUnplayed, systemImage: markWatched ? "checkmark.circle" : "circle") {
+                    Task {
+                        await toggleIsPlayed()
+                    }
+                }
+            case let .favourite(addFavourite):
+                Button(addFavourite ? L10n.addToFavorites : L10n.removeFromFavorites, systemImage: addFavourite ? "heart" : "heart.slash") {
+                    Task {
+                        await toggleIsFavorite()
+                    }
+                }
+            }
+        }
+    }
+    #endif
+
+    @ViewBuilder
+    private var tvOSMenu: some View {
         if let itemID = item.id {
             Button(L10n.goToItem, systemImage: "info.circle") {
                 router.route(to: .item(id: itemID))
