@@ -21,7 +21,7 @@ extension VideoPlayer.PlaybackControls {
         private var manager: MediaPlayerManager
 
         var body: some View {
-            if let hold = containerState.speedHold, hold.state != .idle {
+            if let hold = containerState.speedHold, hold.state == .holding || hold.state == .locked {
                 let isLocked = hold.state == .locked
 
                 Button {

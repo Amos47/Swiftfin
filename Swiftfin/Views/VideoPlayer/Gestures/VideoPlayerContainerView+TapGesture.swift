@@ -239,7 +239,8 @@ extension VideoPlayer.UIVideoPlayerContainerViewController {
                     hold = SpeedHold(holdRate: holdRate)
                 }
                 if let rate = hold.pressBegan(currentRate: manager.rate) {
-                    manager.isTemporaryRate = true
+                    // Holding while locked unlocks, back to the saved speed.
+                    manager.isTemporaryRate = hold.state == .holding
                     manager.setRate(rate: rate)
                 }
                 containerState.speedHold = hold

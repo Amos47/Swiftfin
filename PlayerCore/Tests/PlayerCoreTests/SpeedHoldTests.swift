@@ -66,16 +66,18 @@ final class SpeedHoldTests: XCTestCase {
         XCTAssertNil(hold.tapPill())
     }
 
-    func testPressWhileLockedIsIgnored() {
+    func testPressWhileLockedUnlocksToOriginalRate() {
         var hold = SpeedHold(holdRate: 2)
         _ = hold.pressBegan(currentRate: 1)
         hold.dragged(downBy: 70)
         _ = hold.pressEnded()
 
-        XCTAssertNil(hold.pressBegan(currentRate: 2))
-        XCTAssertEqual(hold.state, .locked)
+        XCTAssertEqual(hold.pressBegan(currentRate: 2), 1)
+        XCTAssertEqual(hold.state, .unlocking)
+        hold.dragged(downBy: 90)
+        XCTAssertEqual(hold.state, .unlocking)
         XCTAssertNil(hold.pressEnded())
-        XCTAssertEqual(hold.state, .locked)
+        XCTAssertEqual(hold.state, .idle)
     }
 
     func testCustomLockDistance() {

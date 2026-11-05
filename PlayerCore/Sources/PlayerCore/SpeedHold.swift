@@ -6,7 +6,8 @@
 // Copyright (c) 2026 Jellyfin & Jellyfin Contributors
 //
 
-/// Press and hold to play faster; drag down while holding to lock the speed, tap the pill to unlock.
+/// Press and hold to play faster; drag down while holding to lock the speed. Tap the pill, or press and hold again,
+/// to unlock.
 ///
 /// Methods that return a rate return the rate the player should switch to, or nil to leave it alone.
 public struct SpeedHold: Sendable, Equatable {
@@ -15,6 +16,8 @@ public struct SpeedHold: Sendable, Equatable {
         case idle
         case holding
         case locked
+        /// The press that unlocked is still down; its drag and release do nothing.
+        case unlocking
     }
 
     public private(set) var state: State = .idle
@@ -30,6 +33,10 @@ public struct SpeedHold: Sendable, Equatable {
     }
 
     public mutating func pressBegan(currentRate: Float) -> Float? {
+        if state == .locked {
+            state = .unlocking
+            return rateBeforeHold
+        }
         guard state == .idle else { return nil }
         rateBeforeHold = currentRate
         state = .holding
@@ -43,6 +50,10 @@ public struct SpeedHold: Sendable, Equatable {
     }
 
     public mutating func pressEnded() -> Float? {
+        if state == .unlocking {
+            state = .idle
+            return nil
+        }
         guard state == .holding else { return nil }
         state = .idle
         return rateBeforeHold
