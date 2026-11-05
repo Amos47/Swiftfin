@@ -27,11 +27,17 @@ struct NavigationBarFilterDrawerModifier: ViewModifier {
             content
         } else {
             if #available(iOS 26, *) {
+                // Personal fork: a solid bar pinned under the title. `safeAreaBar` is see-through and, on iOS 26.5,
+                // floats down over the content.
                 content
-                    .safeAreaBar(edge: .top, spacing: 0) {
+                    .safeAreaInset(edge: .top, spacing: 0) {
                         drawer
+                            .padding(.top, 5)
+                            .background {
+                                Color(uiColor: .systemBackground)
+                                    .ignoresSafeArea(edges: .top)
+                            }
                     }
-                    .preference(key: IsSafeAreaBarApplied.self, value: true)
             } else {
                 NavigationBarDrawerView {
                     drawer
