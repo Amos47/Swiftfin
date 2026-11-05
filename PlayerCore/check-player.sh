@@ -35,7 +35,9 @@ swiftlint lint --quiet --strict \
     Shared/Objects/MediaPlayerManager/MediaPlayerItem/MediaPlayerItem+AppleEngine.swift \
     Shared/Objects/MediaPlayerManager/MediaPlayerProxy/MediaPlayerProxy+AVPlayer.swift \
     Shared/Views/VideoPlayer/VideoPlayer+AppleEngine.swift \
-    Swiftfin/Views/VideoPlayer/Components
+    Swiftfin/Views/VideoPlayer/Components \
+    Swiftfin/Views/Components Swiftfin/Views/ItemView/Series \
+    Shared/Objects/ItemPlaybackResolver.swift Shared/Objects/HomeCardTapPlays.swift
 
 if [ -n "$(git status --porcelain)" ]; then
     echo "warning: the build changed tracked files (SwiftFormat or SwiftGen):"
