@@ -61,6 +61,15 @@ final class ItemContentGroupProvider: ViewModel, ContentGroupProvider {
         )
     }
 
+    /// Personal fork: series on iPhone use the new series page (genres in its details line, seasons in a drop-down).
+    private func isIOSSeriesPage(_ item: BaseItemDto) -> Bool {
+        #if os(iOS)
+        item.type == .series
+        #else
+        false
+        #endif
+    }
+
     @ContentGroupBuilder
     private func _makeGroups(item: BaseItemDto, itemID: String) async throws -> [any ContentGroup] {
 
@@ -85,17 +94,27 @@ final class ItemContentGroupProvider: ViewModel, ContentGroupProvider {
             )
         }
 
+        #if os(iOS)
+        // Personal fork: the iPhone series page: details and actions, then one vertical episode list.
+        if item.type == .series {
+            SeriesOverviewGroup(provider: self)
+            SeriesEpisodeListGroup(parent: item, playButtonItem: mediaPlayerItemProvider?.item)
+        }
+        #endif
+
         switch item.type {
         case .season, .series:
-            SeriesEpisodeContentGroup(
-                parent: item,
-                playButtonItem: mediaPlayerItemProvider?.item
-            )
+            if !isIOSSeriesPage(item) {
+                SeriesEpisodeContentGroup(
+                    parent: item,
+                    playButtonItem: mediaPlayerItemProvider?.item
+                )
+            }
         default:
             []
         }
 
-        if let genres = item.itemGenres, genres.isNotEmpty {
+        if let genres = item.itemGenres, genres.isNotEmpty, !isIOSSeriesPage(item) {
             PillGroup(
                 displayTitle: L10n.genres,
                 id: "genres",
@@ -169,11 +188,13 @@ final class ItemContentGroupProvider: ViewModel, ContentGroupProvider {
             )
             .makeGroups(environment: .default)
         case .series:
-            try await ItemTypeContentGroupProvider(
-                itemTypes: [.season],
-                parent: item
-            )
-            .makeGroups(environment: .default)
+            if !isIOSSeriesPage(item) {
+                try await ItemTypeContentGroupProvider(
+                    itemTypes: [.season],
+                    parent: item
+                )
+                .makeGroups(environment: .default)
+            }
         case .channel, .liveTvChannel, .tvChannel:
             PosterGroup(
                 id: "channel-programs",
@@ -214,6 +235,12 @@ final class ItemContentGroupProvider: ViewModel, ContentGroupProvider {
                 posterSize: .small
             )
         }
+
+        #if os(iOS)
+        if item.type == .series {
+            ExternalLinksGroup(item: item)
+        }
+        #endif
 
         PosterGroup(
             id: "special-features",

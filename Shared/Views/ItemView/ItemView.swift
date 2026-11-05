@@ -61,7 +61,29 @@ struct ItemView: View {
         }
     }
 
+    /// Personal fork: every iPhone series page uses the new layout, whatever the width or item view setting.
+    private var isSeriesPage: Bool {
+        #if os(iOS)
+        provider.item.type == .series
+        #else
+        false
+        #endif
+    }
+
+    private var hasBackdrop: Bool {
+        provider.item.backdropImageTags?.isNotEmpty == true
+    }
+
     private var contentGroups: [any ContentGroup] {
+        #if os(iOS)
+        if isSeriesPage {
+            let header: any ContentGroup = hasBackdrop
+                ? CompactEnhancedHeaderContentGroup(provider: provider, showsDetails: false)
+                : SeriesTitleHeaderGroup(item: provider.item)
+            return [header] + viewModel.groups
+        }
+        #endif
+
         let header: any ContentGroup = switch (isEnhanced, isCompact) {
         case (true, true):
             CompactEnhancedHeaderContentGroup(provider: provider)
@@ -92,7 +114,7 @@ struct ItemView: View {
 
     private var content: some View {
         Group {
-            switch (isEnhanced, isCompact) {
+            switch (isEnhanced || (isSeriesPage && hasBackdrop), isCompact || isSeriesPage) {
             case (true, true):
                 blurredNavigationBarScrollView
             case (true, false):

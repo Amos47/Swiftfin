@@ -16,15 +16,18 @@ extension ItemView {
 
         let id: String = ItemView.Component.header
         let provider: ItemContentGroupProvider
+        /// Personal fork: the iPhone series page shows its details below the header instead.
+        var showsDetails = true
 
         func body(with viewModel: Empty) -> Body {
-            Body(provider: provider)
+            Body(provider: provider, showsDetails: showsDetails)
         }
 
         struct Body: View {
 
             @ObservedObject
             var provider: ItemContentGroupProvider
+            var showsDetails = true
 
             @StoredValue(.User.itemViewAttributes)
             private var attributes
@@ -67,27 +70,29 @@ extension ItemView {
                     .zIndex(10)
 
                     VStack(alignment: .center, spacing: 10) {
-                        MetadataHStack(item: provider.item)
+                        if showsDetails {
+                            MetadataHStack(item: provider.item)
 
-                        VStack(alignment: .center, spacing: 5) {
-                            if provider.item.presentPlayButton {
-                                PlayButton(provider: provider)
+                            VStack(alignment: .center, spacing: 5) {
+                                if provider.item.presentPlayButton {
+                                    PlayButton(provider: provider)
+                                }
+
+                                ItemView.ActionButtonHStack(provider: provider)
                             }
+                            .frame(maxWidth: 300)
 
-                            ItemView.ActionButtonHStack(provider: provider)
+                            ItemView.Description(item: provider.item)
+
+                            ItemView.AttributesHStack(
+                                attributes: attributes,
+                                item: provider.item,
+                                selectedMediaSource: provider.mediaPlayerItemProvider?.mediaSource,
+                                alignment: .leading
+                            )
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .foregroundStyle(.secondary)
                         }
-                        .frame(maxWidth: 300)
-
-                        ItemView.Description(item: provider.item)
-
-                        ItemView.AttributesHStack(
-                            attributes: attributes,
-                            item: provider.item,
-                            selectedMediaSource: provider.mediaPlayerItemProvider?.mediaSource,
-                            alignment: .leading
-                        )
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .foregroundStyle(.secondary)
                     }
                     .edgePadding(.bottom)
                     .background(
