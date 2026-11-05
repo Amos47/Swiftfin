@@ -43,9 +43,9 @@ struct PosterHStackLibrarySection<Library: PagingLibrary>: View
     @Router
     private var router
 
-    // Personal fork: Home rows play wide cards on tap (iPhone).
-    @Environment(\.homeCardTapPlays)
-    private var homeCardTapPlays
+    // Personal fork: wide cards play on tap (iPhone).
+    @Environment(\.wideCardTapPlays)
+    private var wideCardTapPlays
 
     let group: PosterGroup<Library>
 
@@ -131,8 +131,8 @@ struct PosterHStackLibrarySection<Library: PagingLibrary>: View
                     size: group.posterSize
                 ) { element, namespace in
                     #if os(iOS)
-                    if homeCardTapPlays, let item = element as? BaseItemDto,
-                       cardTap(kind: item.cardKind, isWide: group.posterDisplayType == .landscape, isHomeRow: true) == .play
+                    if wideCardTapPlays, let item = element as? BaseItemDto,
+                       cardTap(kind: item.cardKind, isWide: group.posterDisplayType == .landscape) == .play
                     {
                         item.play(router: router, in: namespace)
                         return

@@ -9,6 +9,10 @@
 import JellyfinAPI
 import SwiftUI
 
+#if os(iOS)
+import PlayerCore
+#endif
+
 // TODO: consolidate width constants
 
 private let baseItemListLandscapeWidth: CGFloat = 110
@@ -76,6 +80,13 @@ private struct BaseItemDtoLibraryGridElement: View {
             item: item,
             displayType: resolvedLibraryStyle.posterDisplayType
         ) { namespace in
+            #if os(iOS)
+            // Personal fork: wide cards play on tap (iPhone).
+            if cardTap(kind: item.cardKind, isWide: resolvedLibraryStyle.posterDisplayType == .landscape) == .play {
+                item.play(router: router, in: namespace)
+                return
+            }
+            #endif
             item.libraryDidSelectElement(router: router, in: namespace)
         }
     }
