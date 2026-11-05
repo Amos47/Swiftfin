@@ -151,6 +151,21 @@ extension NavigationRoute {
 
     @MainActor
     static func item(item: BaseItemDto) -> NavigationRoute {
+        #if os(iOS)
+        // Personal fork: iPhone has no season page; a season opens its series page with that season selected.
+        if item.type == .season, let seriesID = item.seriesID {
+            let provider = ItemContentGroupProvider(id: seriesID)
+            provider.preferredSeasonID = item.id
+
+            return NavigationRoute(
+                id: "item-\(seriesID)",
+                withNamespace: { .push(.zoom(sourceID: "item", namespace: $0)) }
+            ) {
+                ItemView(provider: provider)
+            }
+        }
+        #endif
+
         let provider = ItemContentGroupProvider(item: item)
 
         return NavigationRoute(

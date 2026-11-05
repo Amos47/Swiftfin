@@ -24,6 +24,9 @@ final class ItemContentGroupProvider: ViewModel, ContentGroupProvider {
 
     let id: String
 
+    /// Personal fork: the season to show first on the iPhone series page (seasons open their series there).
+    var preferredSeasonID: String?
+
     var displayTitle: String {
         item.displayTitle
     }
@@ -98,7 +101,11 @@ final class ItemContentGroupProvider: ViewModel, ContentGroupProvider {
         // Personal fork: the iPhone series page: details and actions, then one vertical episode list.
         if item.type == .series {
             SeriesOverviewGroup(provider: self)
-            SeriesEpisodeListGroup(parent: item, playButtonItem: mediaPlayerItemProvider?.item)
+            SeriesEpisodeListGroup(
+                parent: item,
+                playButtonItem: mediaPlayerItemProvider?.item,
+                preferredSeasonID: preferredSeasonID
+            )
         }
         #endif
 
