@@ -6,6 +6,9 @@
 // Copyright (c) 2026 Jellyfin & Jellyfin Contributors
 //
 
+#if os(iOS)
+import FactoryKit
+#endif
 import SwiftUI
 
 extension ItemView {
@@ -20,6 +23,16 @@ extension ItemView {
 
         @StoredValue(.User.enabledTrailers)
         private var enabledTrailers: TrailerSelection
+
+        #if os(iOS)
+        // Personal fork: download controls for episodes and movies.
+        @ObservedObject
+        private var downloadStore = Container.shared.downloadStore()
+
+        private var canDownload: Bool {
+            provider.item.id != nil && (provider.item.type == .episode || provider.item.type == .movie)
+        }
+        #endif
 
         private var hasTrailers: Bool {
             if enabledTrailers.contains(.local), provider.localTrailers.isNotEmpty {
@@ -121,6 +134,14 @@ extension ItemView {
                     .isSelected(isFavorited)
                 }
 
+                // MARK: Download
+
+                #if os(iOS)
+                if canDownload {
+                    downloadButton
+                }
+                #endif
+
                 // MARK: Trailer
 
                 if hasTrailers {
@@ -161,5 +182,74 @@ extension ItemView {
             .font(.title3)
             .fontWeight(.semibold)
         }
+
+        #if os(iOS)
+        /// Download (an arrow), a progress ring while downloading (tap to cancel), a filled check once downloaded
+        /// (tap: Delete download), and Retry or Delete after a failure.
+        @ViewBuilder
+        private var downloadButton: some View {
+            let item = provider.item
+            let itemID = item.id ?? ""
+            let service = Container.shared.downloadService()
+
+            switch downloadStore.record(for: itemID)?.state {
+            case .none:
+                Button {
+                    Task { try? await service.download(item) }
+                } label: {
+                    materialLabel(L10n.download, systemImage: "arrow.down.circle", tint: .jellyfinPurple, foregroundColor: .primary)
+                }
+                .foregroundStyle(.primary, .secondary)
+            case .queued, .waiting:
+                Button {
+                    service.cancelOrDelete(itemID: itemID)
+                } label: {
+                    progressLabel(progress: 0)
+                }
+            case let .downloading(progress):
+                Button {
+                    service.cancelOrDelete(itemID: itemID)
+                } label: {
+                    progressLabel(progress: progress)
+                }
+            case .complete:
+                Menu {
+                    Button(L10n.deleteDownload, systemImage: "trash", role: .destructive) {
+                        service.cancelOrDelete(itemID: itemID)
+                    }
+                } label: {
+                    materialLabel(
+                        L10n.downloaded,
+                        systemImage: "arrow.down.circle.fill",
+                        isHighlighted: true,
+                        tint: .jellyfinPurple,
+                        foregroundColor: .primary
+                    )
+                }
+            case .failed:
+                Menu {
+                    Button(L10n.retry, systemImage: "arrow.clockwise") {
+                        service.retry(itemID: itemID)
+                    }
+                    Button(L10n.deleteDownload, systemImage: "trash", role: .destructive) {
+                        service.cancelOrDelete(itemID: itemID)
+                    }
+                } label: {
+                    materialLabel(L10n.download, systemImage: "exclamationmark.circle", tint: .red, foregroundColor: .red)
+                }
+            }
+        }
+
+        private func progressLabel(progress: Double) -> some View {
+            DownloadProgressRing(progress: progress)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .backport
+                .glassEffect(
+                    .regular.selection(tint: .gray.opacity(0.3), foregroundColor: .primary),
+                    in: .rect(cornerRadius: 10, style: .circular)
+                )
+                .accessibilityLabel(L10n.download)
+        }
+        #endif
     }
 }
