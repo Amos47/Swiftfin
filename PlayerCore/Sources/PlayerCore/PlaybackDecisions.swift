@@ -106,3 +106,19 @@ public func fallbackDecision(
 
     return .none
 }
+
+/// Playing less than this without reaching the saved spot keeps the saved spot.
+public let briefPlaySeconds: Double = 30
+
+/// The position to tell the server. A brief play that never reached the saved spot (opened at the start by mistake, or
+/// before the resume seek) keeps the saved spot instead of wiping it; anything else is reported as it is.
+///
+/// - Parameters:
+///   - current: where playback is now, in seconds.
+///   - saved: the item's saved position when this play started, in seconds.
+///   - furthestReached: the furthest position this play reached, in seconds.
+///   - secondsPlayed: how long this play has been playing.
+public func reportedPosition(current: Double, saved: Double?, furthestReached: Double, secondsPlayed: Double) -> Double {
+    guard let saved, saved > 0, furthestReached < saved, secondsPlayed < briefPlaySeconds else { return current }
+    return saved
+}
