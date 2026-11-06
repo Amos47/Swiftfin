@@ -618,6 +618,8 @@ internal enum L10n {
   }
   /// Waiting
   internal static let downloadWaiting = L10n.tr("Localizable", "downloadWaiting", fallback: "Waiting")
+  /// Waiting for server
+  internal static let downloadWaitingForServer = L10n.tr("Localizable", "downloadWaitingForServer", fallback: "Waiting for server")
   /// Dropped frames
   internal static let droppedFrames = L10n.tr("Localizable", "droppedFrames", fallback: "Dropped frames")
   /// This saves the URL as another connection for the existing server and makes it active.

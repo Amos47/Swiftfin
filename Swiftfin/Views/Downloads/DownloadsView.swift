@@ -151,6 +151,8 @@ private struct DownloadRow: View {
         switch record.state {
         case .queued:
             Text(L10n.downloadWaiting)
+        case .waiting:
+            Text(L10n.downloadWaitingForServer)
         case let .downloading(progress):
             ProgressView(value: progress)
                 .tint(Color.jellyfinPurple)

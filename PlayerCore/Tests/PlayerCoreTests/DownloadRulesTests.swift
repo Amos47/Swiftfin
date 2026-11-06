@@ -196,16 +196,29 @@ final class DownloadRulesTests: XCTestCase {
 
     // MARK: - Review fixes
 
-    func testNextDownloadToStartWaitsForActiveOrStarting() {
+    func testShrinkDownloadsRunOneAtATime() {
+        let queue = [QueuedDownload(id: "a", copiesVideo: false), QueuedDownload(id: "b", copiesVideo: false)]
+        XCTAssertEqual(downloadsToStart(queued: queue, running: []), ["a"])
+        XCTAssertEqual(downloadsToStart(queued: queue, running: [RunningDownload(id: "x", copiesVideo: false)]), [])
+    }
+
+    func testCopiesRunUpToThreeAlongsideAShrink() {
         let queue = [
-            QueuedDownload(id: "a", isQueued: false),
-            QueuedDownload(id: "b", isQueued: true),
-            QueuedDownload(id: "c", isQueued: true)
+            QueuedDownload(id: "s1", copiesVideo: false),
+            QueuedDownload(id: "c1", copiesVideo: true),
+            QueuedDownload(id: "s2", copiesVideo: false),
+            QueuedDownload(id: "c2", copiesVideo: true),
+            QueuedDownload(id: "c3", copiesVideo: true),
         ]
-        XCTAssertEqual(nextDownloadToStart(queue, busyIDs: []), "b")
-        XCTAssertNil(nextDownloadToStart(queue, busyIDs: ["a"]))
-        XCTAssertNil(nextDownloadToStart(queue, busyIDs: ["b"]))
-        XCTAssertNil(nextDownloadToStart([QueuedDownload(id: "a", isQueued: false)], busyIDs: []))
+        XCTAssertEqual(downloadsToStart(queued: queue, running: []), ["s1", "c1", "c2"])
+        XCTAssertEqual(
+            downloadsToStart(
+                queued: queue,
+                running: [RunningDownload(id: "x", copiesVideo: true), RunningDownload(id: "y", copiesVideo: true)]
+            ),
+            ["s1"]
+        )
+        XCTAssertEqual(downloadsToStart(queued: queue, running: [RunningDownload(id: "x", copiesVideo: false)]), ["c1", "c2"])
     }
 
     func testFinishOutcome() {

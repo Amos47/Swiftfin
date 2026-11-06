@@ -144,21 +144,49 @@ public func downloadAssetRelativePath(_ absolutePath: String) -> String? {
 
 // MARK: - Queue
 
+/// A download waiting to start, in queue order.
 public struct QueuedDownload: Equatable, Sendable {
 
     public let id: String
-    public let isQueued: Bool
+    public let copiesVideo: Bool
 
-    public init(id: String, isQueued: Bool) {
+    public init(id: String, copiesVideo: Bool) {
         self.id = id
-        self.isQueued = isQueued
+        self.copiesVideo = copiesVideo
     }
 }
 
-/// The next download to start, in order, or nil while one is already running or starting (one at a time).
-public func nextDownloadToStart(_ downloads: [QueuedDownload], busyIDs: Set<String>) -> String? {
-    guard busyIDs.isEmpty else { return nil }
-    return downloads.first(where: \.isQueued)?.id
+/// A download running or starting.
+public struct RunningDownload: Equatable, Sendable {
+
+    public let id: String
+    public let copiesVideo: Bool
+
+    public init(id: String, copiesVideo: Bool) {
+        self.id = id
+        self.copiesVideo = copiesVideo
+    }
+}
+
+/// At most this many downloads run at once on one phone.
+public let maxConcurrentDownloads = 3
+
+/// The queued downloads to start now, in queue order. A download the server has to shrink runs one at a time (it's
+/// the slow, server-heavy kind); copies fill the rest, up to `maxConcurrentDownloads`.
+public func downloadsToStart(queued: [QueuedDownload], running: [RunningDownload]) -> [String] {
+    var count = running.count
+    var shrinking = running.contains { !$0.copiesVideo }
+    var start: [String] = []
+
+    for download in queued where count < maxConcurrentDownloads {
+        if !download.copiesVideo {
+            guard !shrinking else { continue }
+            shrinking = true
+        }
+        start.append(download.id)
+        count += 1
+    }
+    return start
 }
 
 public enum DownloadFinishOutcome: Equatable, Sendable {

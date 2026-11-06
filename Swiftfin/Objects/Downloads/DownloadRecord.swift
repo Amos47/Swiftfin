@@ -15,6 +15,8 @@ struct DownloadRecord: Codable, Identifiable, Equatable {
 
     enum State: Codable, Equatable {
         case queued
+        /// The server is converting as many downloads as it allows; it's asked again shortly.
+        case waiting
         case downloading(progress: Double)
         /// Only set once Apple reports the asset playable offline.
         case complete

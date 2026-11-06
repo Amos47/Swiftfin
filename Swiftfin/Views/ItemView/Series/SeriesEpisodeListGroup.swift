@@ -342,7 +342,7 @@ struct SeriesEpisodeRow: View {
                 SystemImageContentView(systemName: episode.systemImage)
             }
             .aspectRatio(16 / 9, contentMode: .fill)
-            .frame(width: 140)
+            .frame(width: 116)
             .clipShape(RoundedRectangle(cornerRadius: 8))
             .overlay(alignment: .bottom) {
                 if let percentage = episode.userData?.playedPercentage, percentage > 0, episode.userData?.isPlayed != true {
@@ -402,7 +402,10 @@ struct SeriesEpisodeRow: View {
                     .environment(\.cardTapPlays, true)
             }
 
-            VStack(spacing: 6) {
+            // Personal fork: download and "⋯" side by side.
+            HStack(spacing: 0) {
+                DownloadButton(item: episode)
+
                 Menu {
                     episode.posterContextMenu
                         .environment(\.cardTapPlays, true)
@@ -410,13 +413,12 @@ struct SeriesEpisodeRow: View {
                     Image(systemName: "ellipsis")
                         .font(.footnote.weight(.bold))
                         .foregroundStyle(.secondary)
-                        .frame(width: 28, height: 28)
+                        .frame(width: 32, height: 44)
                         .contentShape(Rectangle())
                 }
                 .accessibilityLabel(L10n.moreActions)
-
-                DownloadButton(item: episode)
             }
+            .frame(maxHeight: .infinity)
         }
         .padding(6)
         .overlay {
