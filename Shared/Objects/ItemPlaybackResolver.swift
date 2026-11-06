@@ -47,8 +47,11 @@ enum ItemPlaybackResolver {
         #if os(iOS)
         // Personal fork: a download plays from the file, before any server call, so it works with no network.
         let downloads = Container.shared.downloadStore()
-        if let local = downloads.downloadedPlayback(for: item, fromBeginning: fromBeginning) {
-            return local
+        if downloads.record(for: item.id)?.isComplete == true {
+            await Container.shared.downloadProgressSync().refreshResumePosition(itemID: item.id)
+            if let local = downloads.downloadedPlayback(for: item, fromBeginning: fromBeginning) {
+                return local
+            }
         }
         #endif
 
@@ -72,8 +75,11 @@ enum ItemPlaybackResolver {
         guard let playbackItem = resolvedItem else { return nil }
 
         #if os(iOS)
-        if let local = downloads.downloadedPlayback(for: playbackItem, fromBeginning: fromBeginning) {
-            return local
+        if downloads.record(for: playbackItem.id)?.isComplete == true {
+            await Container.shared.downloadProgressSync().refreshResumePosition(itemID: playbackItem.id)
+            if let local = downloads.downloadedPlayback(for: playbackItem, fromBeginning: fromBeginning) {
+                return local
+            }
         }
         #endif
 

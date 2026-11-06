@@ -44,6 +44,10 @@ final class DownloadService: NSObject, ObservableObject {
     /// Per item, the progress of each media selection being downloaded.
     private var selectionProgress: [String: [AVMediaSelection: Double]] = [:]
     private var playSessionIDs: [String: String] = [:]
+    /// Downloads between leaving the queue and having a task, so only one starts at a time.
+    private var startingIDs: Set<String> = []
+    /// Downloads the user cancelled; other cancellations (force quit) get Retry.
+    private var cancelRequestedIDs: Set<String> = []
     /// Keeps the server's conversion alive. The downloader never pauses between segments, and the server ends a
     /// conversion that hasn't been pinged for 60 seconds.
     private var keepAliveTasks: [String: Task<Void, Never>] = [:]
@@ -110,6 +114,7 @@ final class DownloadService: NSObject, ObservableObject {
     /// Cancels a download in progress, or deletes a finished one.
     func cancelOrDelete(itemID: String) {
         if let task = tasks.removeValue(forKey: itemID) {
+            cancelRequestedIDs.insert(itemID)
             task.cancel()
             stopEncoding(itemID: itemID)
         }
@@ -142,14 +147,22 @@ final class DownloadService: NSObject, ObservableObject {
     // MARK: Queue
 
     private func startNextIfIdle() {
-        guard tasks.isEmpty, let next = store.records.first(where: { $0.state == .queued }) else { return }
+        let queue = store.records.map { QueuedDownload(id: $0.id, isQueued: $0.state == .queued) }
+        guard let nextID = nextDownloadToStart(queue, busyIDs: Set(tasks.keys).union(startingIDs)),
+              let next = store.record(for: nextID)
+        else { return }
+
+        startingIDs.insert(nextID)
 
         Task {
             do {
                 try await start(next)
+                startingIDs.remove(nextID)
             } catch {
+                startingIDs.remove(nextID)
                 logger.error("Unable to start download: \(error.localizedDescription)")
-                fail(itemID: next.id, message: error.localizedDescription)
+                fail(itemID: nextID, message: error.localizedDescription)
+                startNextIfIdle()
             }
         }
     }
@@ -190,14 +203,21 @@ final class DownloadService: NSObject, ObservableObject {
             throw ErrorMessage(L10n.downloadIncomplete)
         }
 
+        // Cancelled while starting.
+        guard var updated = store.record(for: record.id) else {
+            playSessionIDs[record.id] = playSessionID
+            stopEncoding(itemID: record.id)
+            return
+        }
+
         task.taskDescription = record.id
         tasks[record.id] = task
         keepAlive(itemID: record.id, playSessionID: playSessionID, client: userSession.client)
         selectionProgress[record.id] = [:]
         playSessionIDs[record.id] = playSessionID
 
-        var updated = record
         updated.state = .downloading(progress: 0)
+        updated.playSessionID = playSessionID
         store.upsert(updated)
 
         task.resume()
@@ -209,22 +229,39 @@ final class DownloadService: NSObject, ObservableObject {
 
         for task in running {
             guard let itemID = task.taskDescription else { continue }
-            if store.record(for: itemID) == nil {
+
+            // Another user's downloads keep going; only downloads nobody has any more are cancelled.
+            guard store.hasRecordForAnyUser(itemID: itemID) else {
                 task.cancel()
-            } else {
-                tasks[itemID] = task
+                continue
+            }
+
+            tasks[itemID] = task
+            if let record = store.record(for: itemID), let playSessionID = record.playSessionID,
+               let client = Container.shared.currentUserSession()?.client
+            {
+                playSessionIDs[itemID] = playSessionID
+                keepAlive(itemID: itemID, playSessionID: playSessionID, client: client)
             }
         }
 
-        for var record in store.records {
-            guard case .downloading = record.state, tasks[record.id] == nil else { continue }
-
-            // It may have finished while the app was closed.
-            if let assetURL = store.assetURL(for: record), AVURLAsset(url: assetURL).assetCache?.isPlayableOffline == true {
-                record.state = .complete
-                store.upsert(record)
-            } else {
-                fail(itemID: record.id, message: L10n.downloadInterrupted)
+        for var record in store.records where tasks[record.id] == nil {
+            switch record.state {
+            case .downloading:
+                // It may have finished while the app was closed.
+                if isPlayableOffline(record) {
+                    record.state = .complete
+                    store.upsert(record)
+                    protectFromPurging(record)
+                } else {
+                    fail(itemID: record.id, message: L10n.downloadInterrupted)
+                }
+            case .complete:
+                // iOS may have removed it to free up space.
+                if !isPlayableOffline(record) {
+                    fail(itemID: record.id, message: L10n.downloadRemoved)
+                }
+            default: ()
             }
         }
 
@@ -233,40 +270,67 @@ final class DownloadService: NSObject, ObservableObject {
 
     private func fail(itemID: String, message: String) {
         tasks[itemID] = nil
-        guard var record = store.record(for: itemID) else { return }
-        removeAsset(of: record)
-        record.assetRelativePath = nil
-        record.state = .failed(message: message)
-        store.upsert(record)
+        store.updateAnyUser(itemID: itemID) { record in
+            removeAsset(of: record)
+            record.assetRelativePath = nil
+            record.state = .failed(message: message)
+        }
     }
 
     private func finish(itemID: String, error: Error?) {
         tasks[itemID] = nil
         selectionProgress[itemID] = nil
         stopEncoding(itemID: itemID)
+        let cancelRequested = cancelRequestedIDs.remove(itemID) != nil
 
         defer { startNextIfIdle() }
 
-        guard var record = store.record(for: itemID) else { return }
+        var playable = false
+        store.updateAnyUser(itemID: itemID) { record in
+            playable = isPlayableOffline(record)
+        }
 
-        if let error {
-            if (error as NSError).code == NSURLErrorCancelled {
-                return
+        let outcome = downloadFinishOutcome(
+            failed: error != nil,
+            cancelled: (error as? NSError)?.code == NSURLErrorCancelled,
+            cancelRequested: cancelRequested,
+            playableOffline: playable
+        )
+
+        switch outcome {
+        case .ignore:
+            return
+        case .failed:
+            let message = if let error, (error as NSError).code != NSURLErrorCancelled {
+                error.localizedDescription
+            } else if error != nil {
+                L10n.downloadInterrupted
+            } else {
+                L10n.downloadIncomplete
             }
-            logger.error("Download failed: \(error.localizedDescription)")
-            fail(itemID: itemID, message: error.localizedDescription)
-            return
+            if let error {
+                logger.error("Download failed: \(error.localizedDescription)")
+            }
+            fail(itemID: itemID, message: message)
+        case .complete:
+            store.updateAnyUser(itemID: itemID) { record in
+                record.state = .complete
+                protectFromPurging(record)
+            }
         }
+    }
 
-        guard let assetURL = store.assetURL(for: record),
-              AVURLAsset(url: assetURL).assetCache?.isPlayableOffline == true
-        else {
-            fail(itemID: itemID, message: L10n.downloadIncomplete)
-            return
-        }
+    private func isPlayableOffline(_ record: DownloadRecord) -> Bool {
+        guard let url = store.assetURL(for: record) else { return false }
+        return AVURLAsset(url: url).assetCache?.isPlayableOffline == true
+    }
 
-        record.state = .complete
-        store.upsert(record)
+    /// Asks iOS not to remove the download to free up space.
+    private func protectFromPurging(_ record: DownloadRecord) {
+        guard let url = store.assetURL(for: record) else { return }
+        let policy = AVMutableAssetDownloadStorageManagementPolicy()
+        policy.priority = .important
+        AVAssetDownloadStorageManager.shared().setStorageManagementPolicy(policy, for: url)
     }
 
     // MARK: Server
@@ -358,6 +422,9 @@ final class DownloadService: NSObject, ObservableObject {
     /// Ends the server's conversion for a finished or cancelled download.
     private func stopEncoding(itemID: String) {
         keepAliveTasks.removeValue(forKey: itemID)?.cancel()
+        if playSessionIDs[itemID] == nil, let saved = store.record(for: itemID)?.playSessionID {
+            playSessionIDs[itemID] = saved
+        }
         guard let playSessionID = playSessionIDs.removeValue(forKey: itemID),
               let userSession = Container.shared.currentUserSession()
         else { return }
@@ -430,9 +497,10 @@ extension DownloadService: AVAssetDownloadDelegate {
     ) {
         let itemID = aggregateAssetDownloadTask.taskDescription
         MainActor.assumeIsolated {
-            guard let itemID, var record = store.record(for: itemID) else { return }
-            record.assetRelativePath = downloadAssetRelativePath(location.path(percentEncoded: false))
-            store.upsert(record)
+            guard let itemID else { return }
+            store.updateAnyUser(itemID: itemID) { record in
+                record.assetRelativePath = downloadAssetRelativePath(location.path(percentEncoded: false))
+            }
         }
     }
 

@@ -10,6 +10,7 @@ import Combine
 import FactoryKit
 import Foundation
 import Logging
+import PlayerCore
 
 extension Container {
 
@@ -101,16 +102,79 @@ final class DownloadStore: ObservableObject {
         records[index] = record
     }
 
-    /// Removes the record, its folder and its downloaded asset.
+    /// Removes the record, its folder and its downloaded asset. Unsynced offline progress is kept until the server has
+    /// it (`pendingProgress`).
     func delete(itemID: String) {
         guard let serverID, let userID else { return }
 
-        if let record = record(for: itemID), let assetURL = assetURL(for: record) {
-            try? FileManager.default.removeItem(at: assetURL)
+        if let record = record(for: itemID) {
+            if let progress = record.pendingProgress {
+                pendingProgress = addingPendingProgress(progress, to: pendingProgress)
+            }
+            if let assetURL = assetURL(for: record) {
+                try? FileManager.default.removeItem(at: assetURL)
+            }
         }
         try? FileManager.default.removeItem(at: Self.folder(serverID: serverID, userID: userID, itemID: itemID))
         records.removeAll { $0.id == itemID }
     }
+
+    /// Offline progress of deleted downloads that the server doesn't have yet.
+    var pendingProgress: [PendingProgress] {
+        get {
+            guard let url = pendingProgressURL, let data = try? Data(contentsOf: url) else { return [] }
+            return (try? Self.decoder.decode([PendingProgress].self, from: data)) ?? []
+        }
+        set {
+            guard let url = pendingProgressURL else { return }
+            try? FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+            try? Self.encoder.encode(newValue).write(to: url, options: .atomic)
+        }
+    }
+
+    private var pendingProgressURL: URL? {
+        guard let serverID, let userID else { return nil }
+        return Self.root.appendingPathComponent(serverID).appendingPathComponent(userID).appendingPathComponent("pending-progress.json")
+    }
+
+    /// Changes a record saved for any user. Background download events can arrive while another user, or nobody, is
+    /// signed in.
+    func updateAnyUser(itemID: String, _ change: (inout DownloadRecord) -> Void) {
+        guard var record = record(for: itemID) ?? Self.savedRecord(itemID: itemID) else { return }
+        change(&record)
+        upsert(record)
+    }
+
+    /// Whether any user has a record for `itemID`.
+    func hasRecordForAnyUser(itemID: String) -> Bool {
+        record(for: itemID) != nil || Self.savedRecord(itemID: itemID) != nil
+    }
+
+    private static func savedRecord(itemID: String) -> DownloadRecord? {
+        let servers = (try? FileManager.default.contentsOfDirectory(at: root, includingPropertiesForKeys: nil)) ?? []
+        for server in servers {
+            let users = (try? FileManager.default.contentsOfDirectory(at: server, includingPropertiesForKeys: nil)) ?? []
+            for user in users {
+                let file = user.appendingPathComponent(itemID).appendingPathComponent("record.json")
+                if let data = try? Data(contentsOf: file), let record = try? decoder.decode(DownloadRecord.self, from: data) {
+                    return record
+                }
+            }
+        }
+        return nil
+    }
+
+    private static let encoder: JSONEncoder = {
+        let encoder = JSONEncoder()
+        encoder.dateEncodingStrategy = .iso8601
+        return encoder
+    }()
+
+    private static let decoder: JSONDecoder = {
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        return decoder
+    }()
 
     func assetURL(for record: DownloadRecord) -> URL? {
         guard let path = record.assetRelativePath else { return nil }

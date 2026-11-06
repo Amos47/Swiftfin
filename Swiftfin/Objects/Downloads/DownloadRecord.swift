@@ -8,6 +8,7 @@
 
 import Foundation
 import JellyfinAPI
+import PlayerCore
 
 /// Personal fork: one downloaded (or downloading) episode or movie, saved next to its files so it plays offline.
 struct DownloadRecord: Codable, Identifiable, Equatable {
@@ -33,12 +34,26 @@ struct DownloadRecord: Codable, Identifiable, Equatable {
     var assetRelativePath: String?
     var state: State
     var estimatedBytes: Int64
+    /// The server conversion's play session, to keep it alive and stop it.
+    var playSessionID: String?
     var downloadedAt: Date
 
     var localPositionTicks: Int?
     var localPlayed: Bool = false
     /// When this item was last watched offline; cleared once the server has the progress.
     var localPlayedAt: Date?
+
+    /// The unsynced offline progress, if any.
+    var pendingProgress: PendingProgress? {
+        guard let localPlayedAt else { return nil }
+        return PendingProgress(
+            id: id,
+            positionTicks: localPositionTicks ?? 0,
+            played: localPlayed,
+            playedAt: localPlayedAt,
+            downloadedAt: downloadedAt
+        )
+    }
 
     var isComplete: Bool {
         state == .complete

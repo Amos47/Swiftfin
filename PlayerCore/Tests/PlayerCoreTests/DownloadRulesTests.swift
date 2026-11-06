@@ -193,4 +193,63 @@ final class DownloadRulesTests: XCTestCase {
             .keepServer
         )
     }
+
+    // MARK: - Review fixes
+
+    func testNextDownloadToStartWaitsForActiveOrStarting() {
+        let queue = [
+            QueuedDownload(id: "a", isQueued: false),
+            QueuedDownload(id: "b", isQueued: true),
+            QueuedDownload(id: "c", isQueued: true)
+        ]
+        XCTAssertEqual(nextDownloadToStart(queue, busyIDs: []), "b")
+        XCTAssertNil(nextDownloadToStart(queue, busyIDs: ["a"]))
+        XCTAssertNil(nextDownloadToStart(queue, busyIDs: ["b"]))
+        XCTAssertNil(nextDownloadToStart([QueuedDownload(id: "a", isQueued: false)], busyIDs: []))
+    }
+
+    func testFinishOutcome() {
+        XCTAssertEqual(downloadFinishOutcome(failed: false, cancelled: false, cancelRequested: false, playableOffline: true), .complete)
+        XCTAssertEqual(downloadFinishOutcome(failed: false, cancelled: false, cancelRequested: false, playableOffline: false), .failed)
+        XCTAssertEqual(downloadFinishOutcome(failed: true, cancelled: false, cancelRequested: false, playableOffline: false), .failed)
+        // Cancelled by the user: the record is already gone.
+        XCTAssertEqual(downloadFinishOutcome(failed: true, cancelled: true, cancelRequested: true, playableOffline: false), .ignore)
+        // Cancelled by the system (force quit, reboot): offer Retry.
+        XCTAssertEqual(downloadFinishOutcome(failed: true, cancelled: true, cancelRequested: false, playableOffline: false), .failed)
+    }
+
+    func testPendingProgressKeepsTheLatestPerItem() {
+        let early = PendingProgress(
+            id: "a",
+            positionTicks: 10,
+            played: false,
+            playedAt: Date(timeIntervalSince1970: 100),
+            downloadedAt: .distantPast
+        )
+        let late = PendingProgress(
+            id: "a",
+            positionTicks: 0,
+            played: true,
+            playedAt: Date(timeIntervalSince1970: 200),
+            downloadedAt: .distantPast
+        )
+        let other = PendingProgress(
+            id: "b",
+            positionTicks: 5,
+            played: false,
+            playedAt: Date(timeIntervalSince1970: 150),
+            downloadedAt: .distantPast
+        )
+
+        XCTAssertEqual(addingPendingProgress(late, to: [early, other]), [other, late])
+        XCTAssertEqual(addingPendingProgress(early, to: [late]), [late])
+    }
+
+    func testResumeUsesTheNewerPosition() {
+        let local = Date(timeIntervalSince1970: 200)
+        XCTAssertEqual(resumeSource(localPlayedAt: local, serverLastPlayed: Date(timeIntervalSince1970: 300)), .server)
+        XCTAssertEqual(resumeSource(localPlayedAt: local, serverLastPlayed: Date(timeIntervalSince1970: 100)), .local)
+        XCTAssertEqual(resumeSource(localPlayedAt: nil, serverLastPlayed: Date(timeIntervalSince1970: 100)), .server)
+        XCTAssertEqual(resumeSource(localPlayedAt: local, serverLastPlayed: nil), .local)
+    }
 }

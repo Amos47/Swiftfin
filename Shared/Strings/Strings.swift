@@ -608,6 +608,8 @@ internal enum L10n {
   internal static let downloadQualityHigher = L10n.tr("Localizable", "downloadQualityHigher", fallback: "Higher")
   /// Standard
   internal static let downloadQualityStandard = L10n.tr("Localizable", "downloadQualityStandard", fallback: "Standard")
+  /// Removed by iOS to free up space
+  internal static let downloadRemoved = L10n.tr("Localizable", "downloadRemoved", fallback: "Removed by iOS to free up space")
   /// Downloads
   internal static let downloads = L10n.tr("Localizable", "downloads", fallback: "Downloads")
   /// About %@ used

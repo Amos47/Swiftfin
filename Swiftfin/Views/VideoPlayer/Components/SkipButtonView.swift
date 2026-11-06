@@ -113,6 +113,9 @@ extension VideoPlayer.PlaybackControls {
         private func perform(_ action: DownloadEndAction) {
             guard let finishedID = manager.item.id else { return }
 
+            // Deleting keeps this as pending progress until the server has it.
+            Container.shared.downloadProgressSync().markWatched(itemID: finishedID)
+
             switch action {
             case let .nextAndDelete(nextID):
                 guard let next = Container.shared.downloadStore().record(for: nextID) else { return }

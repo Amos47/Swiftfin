@@ -141,3 +141,82 @@ public func downloadAssetRelativePath(_ absolutePath: String) -> String? {
     guard let range = absolutePath.range(of: "/Library/", options: .backwards) else { return nil }
     return String(absolutePath[absolutePath.index(after: range.lowerBound)...])
 }
+
+// MARK: - Queue
+
+public struct QueuedDownload: Equatable, Sendable {
+
+    public let id: String
+    public let isQueued: Bool
+
+    public init(id: String, isQueued: Bool) {
+        self.id = id
+        self.isQueued = isQueued
+    }
+}
+
+/// The next download to start, in order, or nil while one is already running or starting (one at a time).
+public func nextDownloadToStart(_ downloads: [QueuedDownload], busyIDs: Set<String>) -> String? {
+    guard busyIDs.isEmpty else { return nil }
+    return downloads.first(where: \.isQueued)?.id
+}
+
+public enum DownloadFinishOutcome: Equatable, Sendable {
+    case complete
+    /// Shows Retry.
+    case failed
+    /// The user cancelled it; its record is already gone.
+    case ignore
+}
+
+/// What a finished download task means. Only a cancel the user asked for is ignored: the system cancels downloads on a
+/// force quit, and those get Retry.
+public func downloadFinishOutcome(failed: Bool, cancelled: Bool, cancelRequested: Bool, playableOffline: Bool) -> DownloadFinishOutcome {
+    if cancelled, cancelRequested {
+        return .ignore
+    }
+    if failed || !playableOffline {
+        return .failed
+    }
+    return .complete
+}
+
+// MARK: - Progress
+
+/// Offline progress kept after its download is deleted, until the server has it.
+public struct PendingProgress: Codable, Equatable, Sendable {
+
+    public let id: String
+    public let positionTicks: Int
+    public let played: Bool
+    public let playedAt: Date
+    public let downloadedAt: Date
+
+    public init(id: String, positionTicks: Int, played: Bool, playedAt: Date, downloadedAt: Date) {
+        self.id = id
+        self.positionTicks = positionTicks
+        self.played = played
+        self.playedAt = playedAt
+        self.downloadedAt = downloadedAt
+    }
+}
+
+/// Adds `progress`, keeping only the latest entry per item.
+public func addingPendingProgress(_ progress: PendingProgress, to list: [PendingProgress]) -> [PendingProgress] {
+    if let existing = list.first(where: { $0.id == progress.id }), existing.playedAt >= progress.playedAt {
+        return list
+    }
+    return list.filter { $0.id != progress.id } + [progress]
+}
+
+public enum ResumeSource: Equatable, Sendable {
+    case local
+    case server
+}
+
+/// Where a download resumes from: whichever of the offline and the server position was watched last.
+public func resumeSource(localPlayedAt: Date?, serverLastPlayed: Date?) -> ResumeSource {
+    guard let localPlayedAt else { return .server }
+    guard let serverLastPlayed else { return .local }
+    return serverLastPlayed > localPlayedAt ? .server : .local
+}
