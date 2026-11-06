@@ -38,6 +38,9 @@ public struct DownloadStreamRequest: Equatable, Sendable {
     public let copiesVideo: Bool
     public let videoBitrate: Int
     public let audioBitrate: Int
+    /// The server's `VideoCodec` list: a copy keeps HEVC or H.264; a shrunk stream is H.264, which servers without a
+    /// GPU encoder make fast enough for the downloader (a slow HEVC encode makes the server restart and drop segments).
+    public let videoCodecs: String
     /// The text subtitle to request so the stream lists all text subtitles; nil leaves subtitles out of the request.
     public let subtitleStreamIndex: Int?
 }
@@ -67,6 +70,7 @@ public func downloadStreamRequest(
         copiesVideo: copies,
         videoBitrate: copies ? copyVideoBitrate : quality.videoBitrate,
         audioBitrate: quality.audioBitrate,
+        videoCodecs: copies ? "hevc,h264" : "h264",
         subtitleStreamIndex: firstTextSubtitleIndex
     )
 }
@@ -129,4 +133,11 @@ public func progressSyncDecision(localPlayedAt: Date?, downloadedAt: Date, serve
         return .keepServer
     }
     return .sendLocal
+}
+
+/// Where a downloaded asset lives, relative to the app's home folder, which changes between installs. iOS puts assets
+/// under `Library/`; the simulator reports the path with a `/.nofollow` prefix, so it's cut at the last `/Library/`.
+public func downloadAssetRelativePath(_ absolutePath: String) -> String? {
+    guard let range = absolutePath.range(of: "/Library/", options: .backwards) else { return nil }
+    return String(absolutePath[absolutePath.index(after: range.lowerBound)...])
 }

@@ -37,6 +37,19 @@ final class DownloadRulesTests: XCTestCase {
         XCTAssertEqual(request.audioBitrate, 128_000)
     }
 
+    func testCopiesKeepHEVCAndTranscodesUseH264() {
+        XCTAssertEqual(
+            downloadStreamRequest(sourceVideoCodec: "hevc", sourceVideoBitrate: 1_000_000, firstTextSubtitleIndex: nil, quality: .standard)
+                .videoCodecs,
+            "hevc,h264"
+        )
+        XCTAssertEqual(
+            downloadStreamRequest(sourceVideoCodec: "hevc", sourceVideoBitrate: 9_000_000, firstTextSubtitleIndex: nil, quality: .standard)
+                .videoCodecs,
+            "h264"
+        )
+    }
+
     func testHigherQualityCopiesUpToFiveMegabits() {
         let request = downloadStreamRequest(
             sourceVideoCodec: "H264",
@@ -77,6 +90,22 @@ final class DownloadRulesTests: XCTestCase {
             downloadStreamRequest(sourceVideoCodec: "hevc", sourceVideoBitrate: 1, firstTextSubtitleIndex: nil, quality: .standard)
                 .subtitleStreamIndex
         )
+    }
+
+    // MARK: - Asset path
+
+    func testAssetPathIsKeptFromLibrary() {
+        XCTAssertEqual(
+            downloadAssetRelativePath(
+                "/.nofollow/Users/me/Library/Developer/CoreSimulator/Devices/D/data/Containers/Data/Application/A/Library/com.apple.UserManagedAssets.x/The Dundies_1.movpkg"
+            ),
+            "Library/com.apple.UserManagedAssets.x/The Dundies_1.movpkg"
+        )
+        XCTAssertEqual(
+            downloadAssetRelativePath("/private/var/mobile/Containers/Data/Application/A/Library/com.apple.UserManagedAssets.x/a.movpkg"),
+            "Library/com.apple.UserManagedAssets.x/a.movpkg"
+        )
+        XCTAssertNil(downloadAssetRelativePath("/tmp/a.movpkg"))
     }
 
     // MARK: - Size estimate

@@ -64,6 +64,11 @@ final class RootCoordinator: ObservableObject {
         do {
             try await SwiftfinStore.setupDataStack()
             startPreferenceObservation()
+
+            #if os(iOS)
+            // Personal fork: start downloads after the data stack, so background downloads re-attach.
+            _ = Container.shared.downloadService()
+            #endif
         } catch {
             throw AppStartupError.dataStack(error)
         }

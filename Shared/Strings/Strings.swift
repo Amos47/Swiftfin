@@ -588,6 +588,14 @@ internal enum L10n {
   internal static let download = L10n.tr("Localizable", "download", fallback: "Download")
   /// Downloaded items are only playable through the swiftfin video player.
   internal static let downloadedPlayerWarning = L10n.tr("Localizable", "downloadedPlayerWarning", fallback: "Downloaded items are only playable through the swiftfin video player.")
+  /// The download didn't finish
+  internal static let downloadIncomplete = L10n.tr("Localizable", "downloadIncomplete", fallback: "The download didn't finish")
+  /// Download interrupted
+  internal static let downloadInterrupted = L10n.tr("Localizable", "downloadInterrupted", fallback: "Download interrupted")
+  /// Higher
+  internal static let downloadQualityHigher = L10n.tr("Localizable", "downloadQualityHigher", fallback: "Higher")
+  /// Standard
+  internal static let downloadQualityStandard = L10n.tr("Localizable", "downloadQualityStandard", fallback: "Standard")
   /// Downloads
   internal static let downloads = L10n.tr("Localizable", "downloads", fallback: "Downloads")
   /// Dropped frames

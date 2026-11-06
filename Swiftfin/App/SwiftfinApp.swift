@@ -13,6 +13,10 @@ import UIKit
 @main
 struct SwiftfinApp: App {
 
+    // Personal fork: background downloads.
+    @UIApplicationDelegateAdaptor(SwiftfinAppDelegate.self)
+    private var appDelegate
+
     init() {
         Self.configure()
 
