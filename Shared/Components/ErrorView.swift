@@ -71,6 +71,11 @@ struct ErrorView<ErrorType: Error>: View {
                 .frame(maxWidth: buttonMaxSize)
             }
 
+            #if os(iOS)
+            // Personal fork: a way to downloads when the server can't be reached.
+            GoToDownloadsButton()
+            #endif
+
             if let localizedError = error as? LocalizedError,
                let recoverySuggestion = localizedError.recoverySuggestion
             {

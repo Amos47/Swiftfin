@@ -112,6 +112,12 @@ extension TabItem {
                 .if(UIDevice.isTV) { view in
                     view.toolbar(.hidden, for: .navigationBar)
                 }
+                #if os(iOS)
+                // Personal fork: Downloads.
+                .topBarTrailing {
+                    DownloadsToolbarButton()
+                }
+                #endif
         }
     }
 

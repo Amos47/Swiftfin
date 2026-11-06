@@ -109,6 +109,14 @@ struct MainTabView: View {
                 FocusedPosterCinematicBackgroundView()
             }
             #endif
+            #if os(iOS)
+            // Personal fork: with no server and some downloads, open on Downloads.
+            .task {
+                if await DownloadsLaunch.shared.checkServer() {
+                    tabCoordinator.selectedTabID = TabItem.media.id
+                }
+            }
+            #endif
     }
 }
 

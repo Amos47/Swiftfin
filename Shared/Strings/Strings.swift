@@ -590,16 +590,32 @@ internal enum L10n {
   internal static let download = L10n.tr("Localizable", "download", fallback: "Download")
   /// Downloaded items are only playable through the swiftfin video player.
   internal static let downloadedPlayerWarning = L10n.tr("Localizable", "downloadedPlayerWarning", fallback: "Downloaded items are only playable through the swiftfin video player.")
+  /// About %@ · %@ free
+  internal static func downloadEstimate(_ p1: Any, _ p2: Any) -> String {
+    return L10n.tr("Localizable", "downloadEstimate", String(describing: p1), String(describing: p2), fallback: "About %@ · %@ free")
+  }
   /// The download didn't finish
   internal static let downloadIncomplete = L10n.tr("Localizable", "downloadIncomplete", fallback: "The download didn't finish")
   /// Download interrupted
   internal static let downloadInterrupted = L10n.tr("Localizable", "downloadInterrupted", fallback: "Download interrupted")
+  /// This may not fit on your iPhone.
+  internal static let downloadMayNotFit = L10n.tr("Localizable", "downloadMayNotFit", fallback: "This may not fit on your iPhone.")
+  /// Download quality
+  internal static let downloadQuality = L10n.tr("Localizable", "downloadQuality", fallback: "Download quality")
+  /// Standard is about 1 GB an hour of video, Higher about 2.3 GB. Small files download as they are.
+  internal static let downloadQualityFooter = L10n.tr("Localizable", "downloadQualityFooter", fallback: "Standard is about 1 GB an hour of video, Higher about 2.3 GB. Small files download as they are.")
   /// Higher
   internal static let downloadQualityHigher = L10n.tr("Localizable", "downloadQualityHigher", fallback: "Higher")
   /// Standard
   internal static let downloadQualityStandard = L10n.tr("Localizable", "downloadQualityStandard", fallback: "Standard")
   /// Downloads
   internal static let downloads = L10n.tr("Localizable", "downloads", fallback: "Downloads")
+  /// About %@ used
+  internal static func downloadSpaceUsed(_ p1: Any) -> String {
+    return L10n.tr("Localizable", "downloadSpaceUsed", String(describing: p1), fallback: "About %@ used")
+  }
+  /// Waiting
+  internal static let downloadWaiting = L10n.tr("Localizable", "downloadWaiting", fallback: "Waiting")
   /// Dropped frames
   internal static let droppedFrames = L10n.tr("Localizable", "droppedFrames", fallback: "Dropped frames")
   /// This saves the URL as another connection for the existing server and makes it active.
@@ -766,6 +782,8 @@ internal enum L10n {
   internal static let gesturesUnlocked = L10n.tr("Localizable", "gesturesUnlocked", fallback: "Gestures unlocked")
   /// Gbps
   internal static let gigabitsPerSecond = L10n.tr("Localizable", "gigabitsPerSecond", fallback: "Gbps")
+  /// Go to Downloads
+  internal static let goToDownloads = L10n.tr("Localizable", "goToDownloads", fallback: "Go to Downloads")
   /// Go to item
   internal static let goToItem = L10n.tr("Localizable", "goToItem", fallback: "Go to item")
   /// Go to series
@@ -1176,6 +1194,8 @@ internal enum L10n {
   internal static let noActivity = L10n.tr("Localizable", "noActivity", fallback: "No activity")
   /// No profiles defined. Playback issues may occur.
   internal static let noDeviceProfileWarning = L10n.tr("Localizable", "noDeviceProfileWarning", fallback: "No profiles defined. Playback issues may occur.")
+  /// No downloads yet
+  internal static let noDownloads = L10n.tr("Localizable", "noDownloads", fallback: "No downloads yet")
   /// No episodes available
   internal static let noEpisodesAvailable = L10n.tr("Localizable", "noEpisodesAvailable", fallback: "No episodes available")
   /// No items
