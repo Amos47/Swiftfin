@@ -343,6 +343,8 @@ private struct BaseItemDtoPosterContextMenu: View {
                         await toggleIsFavorite()
                     }
                 }
+            case .download, .deleteDownload:
+                EmptyView()
             }
         }
     }
