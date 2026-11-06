@@ -274,6 +274,20 @@ private struct BaseItemDtoPosterContextMenu: View {
     @State
     private var item: BaseItemDto
 
+    #if os(iOS)
+    // Personal fork: Download / Delete download.
+    @ObservedObject
+    private var downloadStore = Container.shared.downloadStore()
+
+    private var downloadState: CardDownloadState {
+        switch downloadStore.record(for: item.id)?.state {
+        case .none: .notDownloaded
+        case .complete: .downloaded
+        case .queued, .downloading, .failed: .downloading
+        }
+    }
+    #endif
+
     init(item: BaseItemDto) {
         self.item = item
     }
@@ -305,7 +319,8 @@ private struct BaseItemDtoPosterContextMenu: View {
             hasProgress: hasProgress,
             isPlayed: isPlayed,
             isFavourite: isFavorite,
-            canMarkWatched: item.canBePlayed
+            canMarkWatched: item.canBePlayed,
+            downloadState: downloadState
         )
 
         ForEach(Array(items.enumerated()), id: \.offset) { _, menuItem in
@@ -341,6 +356,18 @@ private struct BaseItemDtoPosterContextMenu: View {
                 Button(addFavourite ? L10n.addToFavorites : L10n.removeFromFavorites, systemImage: addFavourite ? "heart" : "heart.slash") {
                     Task {
                         await toggleIsFavorite()
+                    }
+                }
+            case .download:
+                Button(L10n.download, systemImage: "arrow.down.circle") {
+                    Task {
+                        try? await Container.shared.downloadService().download(item)
+                    }
+                }
+            case .deleteDownload:
+                Button(L10n.deleteDownload, systemImage: "trash", role: .destructive) {
+                    if let id = item.id {
+                        Container.shared.downloadService().cancelOrDelete(itemID: id)
                     }
                 }
             }

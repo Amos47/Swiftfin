@@ -426,10 +426,6 @@ extension Defaults.Keys {
     // Experimental settings
     enum Experimental {
 
-        static var downloads: Key<Bool> {
-            UserKey("experimentalDownloads", default: false)
-        }
-
         static var serverConnectionAutoSwitch: Key<Bool> {
             UserKey("experimentalServerConnectionAutoSwitch", default: false)
         }

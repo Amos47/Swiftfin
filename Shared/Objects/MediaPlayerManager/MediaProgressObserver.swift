@@ -8,6 +8,7 @@
 
 import Combine
 import Defaults
+import FactoryKit
 import Foundation
 import JellyfinAPI
 
@@ -37,6 +38,7 @@ class MediaProgressObserver: ViewModel, MediaPlayerObserver {
 
     private func sendReport() {
         guard let item else { return }
+        recordDownloadProgress(for: item)
 
         switch lastPlaybackRequestStatus {
         case .playing:
@@ -79,7 +81,20 @@ class MediaProgressObserver: ViewModel, MediaPlayerObserver {
 
     private func endPlaybackSession() {
         guard let item else { return }
+        recordDownloadProgress(for: item)
         sendStopReport(for: item, seconds: manager?.seconds)
+    }
+
+    /// Personal fork: a download also saves its position locally, as the server may be out of reach.
+    private func recordDownloadProgress(for item: MediaPlayerItem) {
+        #if os(iOS)
+        guard item.isDownloaded else { return }
+        Container.shared.downloadProgressSync().record(
+            itemID: item.baseItem.id,
+            positionTicks: manager?.seconds.ticks,
+            runtimeTicks: item.baseItem.runTimeTicks
+        )
+        #endif
     }
 
     private func playbackItemDidChange(_ newItem: MediaPlayerItem?) {

@@ -402,17 +402,21 @@ struct SeriesEpisodeRow: View {
                     .environment(\.cardTapPlays, true)
             }
 
-            Menu {
-                episode.posterContextMenu
-                    .environment(\.cardTapPlays, true)
-            } label: {
-                Image(systemName: "ellipsis")
-                    .font(.footnote.weight(.bold))
-                    .foregroundStyle(.secondary)
-                    .frame(width: 28, height: 28)
-                    .contentShape(Rectangle())
+            VStack(spacing: 6) {
+                Menu {
+                    episode.posterContextMenu
+                        .environment(\.cardTapPlays, true)
+                } label: {
+                    Image(systemName: "ellipsis")
+                        .font(.footnote.weight(.bold))
+                        .foregroundStyle(.secondary)
+                        .frame(width: 28, height: 28)
+                        .contentShape(Rectangle())
+                }
+                .accessibilityLabel(L10n.moreActions)
+
+                DownloadButton(item: episode)
             }
-            .accessibilityLabel(L10n.moreActions)
         }
         .padding(6)
         .overlay {

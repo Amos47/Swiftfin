@@ -36,19 +36,32 @@ public enum CardMenuItem: Sendable, Equatable {
     case markWatched(Bool)
     /// `true` adds it to favourites, `false` removes it.
     case favourite(Bool)
+    case download
+    /// Cancels a download in progress, or deletes a finished one.
+    case deleteDownload
+}
+
+public enum CardDownloadState: Sendable {
+    /// Downloads aren't offered (tvOS, or not a download-capable screen).
+    case unavailable
+    case notDownloaded
+    case downloading
+    case downloaded
 }
 
 /// The card menu, in order. Play is left out where tapping the card already plays.
 ///
 /// - Parameter canMarkWatched: whether the item can be marked watched (seasons, box sets and folders can, though they
 ///   don't play from a card); nil means only episodes, movies and series.
+/// - Parameter downloadState: episodes and movies get Download, or Delete download once queued or downloaded.
 public func cardMenuItems(
     kind: CardItemKind,
     tapPlays: Bool,
     hasProgress: Bool,
     isPlayed: Bool,
     isFavourite: Bool,
-    canMarkWatched: Bool? = nil
+    canMarkWatched: Bool? = nil,
+    downloadState: CardDownloadState = .unavailable
 ) -> [CardMenuItem] {
     var items: [CardMenuItem] = []
     let isPlayable = kind != .other
@@ -67,6 +80,13 @@ public func cardMenuItems(
     }
     if canMarkWatched ?? isPlayable {
         items.append(.markWatched(!isPlayed))
+    }
+    if kind == .episode || kind == .movie {
+        switch downloadState {
+        case .unavailable: ()
+        case .notDownloaded: items.append(.download)
+        case .downloading, .downloaded: items.append(.deleteDownload)
+        }
     }
 
     items.append(.favourite(!isFavourite))

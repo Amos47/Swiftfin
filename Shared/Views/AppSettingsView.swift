@@ -80,6 +80,9 @@ struct AppSettingsView: View {
                     )
                 }
             }
+
+            // Personal fork: download quality.
+            DownloadSettingsSection()
             #endif
 
             Section {

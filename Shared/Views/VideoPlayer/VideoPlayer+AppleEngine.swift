@@ -6,6 +6,7 @@
 // Copyright (c) 2026 Jellyfin & Jellyfin Contributors
 //
 
+import FactoryKit
 import JellyfinAPI
 import SwiftUI
 
@@ -23,10 +24,15 @@ struct AppleEngineFallbackModifier: ViewModifier {
 
     @State
     private var isOfferingVLC = false
+    @State
+    private var isShowingError = false
 
     func body(content: Content) -> some View {
         content
             .onReceive(proxy.$fallbackRequest) { request in
+                // Downloads never go to VLC.
+                let request = manager.playbackItem?.isDownloaded == true ? downloadFallbackDecision(request) : request
+
                 switch request {
                 case .none:
                     break
@@ -38,12 +44,21 @@ struct AppleEngineFallbackModifier: ViewModifier {
                     switchToVLC()
                 case .offerVLC:
                     isOfferingVLC = true
+                case .showError:
+                    isShowingError = true
                 }
             }
             .alert(L10n.error, isPresented: $isOfferingVLC) {
                 Button(L10n.playWithVLC) {
                     switchToVLC()
                 }
+                Button(L10n.close, role: .cancel) {
+                    manager.stop()
+                }
+            } message: {
+                Text(L10n.unableToLoadThisItem)
+            }
+            .alert(L10n.error, isPresented: $isShowingError) {
                 Button(L10n.close, role: .cancel) {
                     manager.stop()
                 }
@@ -72,6 +87,13 @@ extension MediaPlayerManager {
         let audioStreamIndex = playbackItem.selectedAudioStreamIndex
         let subtitleStreamIndex = playbackItem.selectedSubtitleStreamIndex
         let positionTicks = seconds.ticks
+
+        #if os(iOS)
+        // Personal fork: a download reloads from its file.
+        if playbackItem.isDownloaded, let record = Container.shared.downloadStore().record(for: playbackItem.baseItem.id) {
+            return record.playerItemProvider.modifyingItem { $0.userData?.playbackPositionTicks = positionTicks }
+        }
+        #endif
 
         return MediaPlayerItemProvider(item: playbackItem.baseItem, mediaSource: mediaSource) { item, modifyItem in
             try await MediaPlayerItem.build(

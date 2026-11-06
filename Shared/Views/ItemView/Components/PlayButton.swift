@@ -7,6 +7,7 @@
 //
 
 import Defaults
+import FactoryKit
 import JellyfinAPI
 import Logging
 import SwiftUI
@@ -35,6 +36,19 @@ struct PlayButton: View {
     }
 
     private func play(fromBeginning: Bool = false) {
+        #if os(iOS)
+        // Personal fork: a downloaded item plays from its file.
+        if let item = provider.mediaPlayerItemProvider?.item,
+           Container.shared.downloadStore().record(for: item.id)?.isComplete == true
+        {
+            Task {
+                guard let playback = try? await ItemPlaybackResolver.playback(for: item, fromBeginning: fromBeginning) else { return }
+                router.route(to: .videoPlayer(provider: playback.provider, queue: playback.queue))
+            }
+            return
+        }
+        #endif
+
         let mediaPlayerItemProvider = if fromBeginning {
             provider.mediaPlayerItemProvider?.modifyingItem {
                 $0.userData?.playbackPositionTicks = 0

@@ -44,10 +44,46 @@ enum ItemPlaybackResolver {
         for item: BaseItemDto,
         fromBeginning: Bool = false
     ) async throws -> (provider: MediaPlayerItemProvider, queue: (any MediaPlayerQueue)?)? {
-        guard let userSession = Container.shared.currentUserSession(),
-              let playbackItem = try await playbackItem(for: item, client: userSession.client),
-              var provider = playbackItem.getPlaybackItemProvider(userSession: userSession)
-        else { return nil }
+        #if os(iOS)
+        // Personal fork: a download plays from the file, before any server call, so it works with no network.
+        let downloads = Container.shared.downloadStore()
+        if downloads.record(for: item.id)?.isComplete == true {
+            await Container.shared.downloadProgressSync().refreshResumePosition(itemID: item.id)
+            if let local = downloads.downloadedPlayback(for: item, fromBeginning: fromBeginning) {
+                return local
+            }
+        }
+        #endif
+
+        guard let userSession = Container.shared.currentUserSession() else { return nil }
+
+        let resolvedItem: BaseItemDto?
+        do {
+            resolvedItem = try await playbackItem(for: item, client: userSession.client)
+        } catch {
+            #if os(iOS)
+            // Personal fork: with no server, a show plays its first downloaded episode.
+            if let episode = downloads.firstDownloadedEpisode(of: item),
+               let local = downloads.downloadedPlayback(for: episode, fromBeginning: fromBeginning)
+            {
+                return local
+            }
+            #endif
+            throw error
+        }
+
+        guard let playbackItem = resolvedItem else { return nil }
+
+        #if os(iOS)
+        if downloads.record(for: playbackItem.id)?.isComplete == true {
+            await Container.shared.downloadProgressSync().refreshResumePosition(itemID: playbackItem.id)
+            if let local = downloads.downloadedPlayback(for: playbackItem, fromBeginning: fromBeginning) {
+                return local
+            }
+        }
+        #endif
+
+        guard var provider = playbackItem.getPlaybackItemProvider(userSession: userSession) else { return nil }
 
         if fromBeginning {
             provider = provider.modifyingItem { $0.userData?.playbackPositionTicks = 0 }

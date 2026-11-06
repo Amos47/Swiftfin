@@ -64,6 +64,11 @@ class MediaPlayerItem: ViewModel, MediaPlayerObserver {
 
     let requestedBitrate: PlaybackBitrate
 
+    #if os(iOS)
+    /// Personal fork: plays a downloaded file. Track changes never rebuild it, and it never falls back to VLC.
+    var isDownloaded = false
+    #endif
+
     // MARK: init
 
     init(
@@ -124,6 +129,13 @@ class MediaPlayerItem: ViewModel, MediaPlayerObserver {
 
     /// Decides whether a track change can be performed by the player in place, or whether the server must produce a new stream.
     func isRebuildRequired(type: MediaStreamType, from oldIndex: Int?, to newIndex: Int?) -> Bool {
+        #if os(iOS)
+        // Personal fork: a download has everything it can play in the file.
+        if isDownloaded {
+            return false
+        }
+        #endif
+
         let isTranscoding = mediaSource.transcodingURL != nil
 
         // Disabling a track is ALWAYS a local-only operation.

@@ -79,6 +79,65 @@ final class CardActionsTests: XCTestCase {
         XCTAssertEqual(items, [.goToItem, .favourite(true)])
     }
 
+    // MARK: - Downloads
+
+    func testEpisodeOffersDownload() {
+        let items = cardMenuItems(
+            kind: .episode,
+            tapPlays: true,
+            hasProgress: false,
+            isPlayed: false,
+            isFavourite: false,
+            downloadState: .notDownloaded
+        )
+        XCTAssertTrue(items.contains(.download))
+        XCTAssertEqual(items.firstIndex(of: .download).map { $0 + 1 }, items.firstIndex(of: .favourite(true)))
+    }
+
+    func testDownloadedMovieOffersDelete() {
+        let items = cardMenuItems(
+            kind: .movie,
+            tapPlays: false,
+            hasProgress: false,
+            isPlayed: false,
+            isFavourite: false,
+            downloadState: .downloaded
+        )
+        XCTAssertTrue(items.contains(.deleteDownload))
+        XCTAssertFalse(items.contains(.download))
+    }
+
+    func testDownloadingOffersDelete() {
+        let items = cardMenuItems(
+            kind: .episode,
+            tapPlays: false,
+            hasProgress: false,
+            isPlayed: false,
+            isFavourite: false,
+            downloadState: .downloading
+        )
+        XCTAssertTrue(items.contains(.deleteDownload))
+    }
+
+    func testSeriesNeverOffersDownload() {
+        let items = cardMenuItems(
+            kind: .series,
+            tapPlays: false,
+            hasProgress: false,
+            isPlayed: false,
+            isFavourite: false,
+            downloadState: .notDownloaded
+        )
+        XCTAssertFalse(items.contains(.download))
+        XCTAssertFalse(items.contains(.deleteDownload))
+    }
+
+    func testUnavailableAddsNothing() {
+        let items = cardMenuItems(kind: .episode, tapPlays: false, hasProgress: false, isPlayed: false, isFavourite: false)
+        XCTAssertFalse(items.contains(.download))
+        XCTAssertFalse(items.contains(.deleteDownload))
+    }
+
     func testSeasonsAndCollectionsCanStillBeMarkedWatched() {
         let items = cardMenuItems(
             kind: .other,

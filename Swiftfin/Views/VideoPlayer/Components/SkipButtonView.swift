@@ -30,6 +30,12 @@ extension VideoPlayer.PlaybackControls {
         private var currentSegmentStart: Double?
         @State
         private var enteredSegmentAt: Double?
+        /// Downloads only: Next & delete, or Delete.
+        @State
+        private var endAction: DownloadEndAction?
+        /// A finished download to delete once the next one has started.
+        @State
+        private var pendingDeletionID: String?
 
         private func title(for button: SkipButton) -> String {
             switch button {
@@ -67,6 +73,69 @@ extension VideoPlayer.PlaybackControls {
                 isLive: manager.item.isLiveStream,
                 enteredSegmentAt: enteredSegmentAt
             )
+
+            updateEndAction(position: position)
+        }
+
+        private func updateEndAction(position: Double) {
+            guard manager.playbackItem?.isDownloaded == true, let itemID = manager.item.id else {
+                endAction = nil
+                return
+            }
+
+            // The moment Next Episode would show, whether or not there's a next episode.
+            let moment = skipButton(
+                position: position,
+                runtime: manager.item.runtime?.seconds,
+                segments: segments,
+                hasNextItem: true,
+                isLive: false,
+                enteredSegmentAt: enteredSegmentAt
+            )
+            let isAtMoment = if case .nextEpisode = moment {
+                true
+            } else {
+                false
+            }
+
+            let store = Container.shared.downloadStore()
+            let episodes = store.episodes(ofSeries: manager.item.seriesID).map {
+                DownloadedEpisode(id: $0.id, season: $0.item.parentIndexNumber ?? 0, episode: $0.item.indexNumber ?? 0)
+            }
+
+            endAction = downloadEndAction(
+                isDownloaded: true,
+                atNextEpisodeMoment: isAtMoment,
+                nextDownloadedID: nextDownloadedEpisode(after: itemID, in: episodes)
+            )
+        }
+
+        private func perform(_ action: DownloadEndAction) {
+            guard let finishedID = manager.item.id else { return }
+
+            // Deleting keeps this as pending progress until the server has it.
+            Container.shared.downloadProgressSync().markWatched(itemID: finishedID)
+
+            switch action {
+            case let .nextAndDelete(nextID):
+                guard let next = Container.shared.downloadStore().record(for: nextID) else { return }
+                pendingDeletionID = finishedID
+                manager.playNewItem(provider: next.playerItemProvider)
+            case .delete:
+                manager.stop()
+                Task {
+                    // Let the player let go of the file first.
+                    try? await Task.sleep(for: .seconds(1))
+                    Container.shared.downloadService().cancelOrDelete(itemID: finishedID)
+                }
+            }
+        }
+
+        private func title(for action: DownloadEndAction) -> String {
+            switch action {
+            case .nextAndDelete: L10n.nextAndDelete
+            case .delete: L10n.deleteDownload
+            }
         }
 
         private func perform(_ button: SkipButton) {
@@ -85,14 +154,20 @@ extension VideoPlayer.PlaybackControls {
 
         private func loadSegments() async {
             segments = []
-            guard let itemID = manager.item.id, !manager.item.isLiveStream,
-                  let client = Container.shared.currentUserSession()?.client
-            else { return }
+            guard let itemID = manager.item.id, !manager.item.isLiveStream else { return }
 
-            let request = Paths.getItemSegments(itemID: itemID)
-            guard let result = try? await client.send(request).value else { return }
+            let mediaSegments: [MediaSegmentDto]
+            if manager.playbackItem?.isDownloaded == true, let record = Container.shared.downloadStore().record(for: itemID) {
+                // Downloads saved their segments, so the buttons work offline.
+                mediaSegments = record.segments
+            } else {
+                guard let client = Container.shared.currentUserSession()?.client,
+                      let result = try? await client.send(Paths.getItemSegments(itemID: itemID)).value
+                else { return }
+                mediaSegments = result.items ?? []
+            }
 
-            segments = (result.items ?? []).compactMap { segment in
+            segments = mediaSegments.compactMap { segment in
                 let kind: SkipKind? = switch segment.type {
                 case .intro: .intro
                 case .recap: .recap
@@ -106,7 +181,22 @@ extension VideoPlayer.PlaybackControls {
         }
 
         var body: some View {
-            ZStack {
+            HStack(spacing: 10) {
+                if let endAction {
+                    Button {
+                        perform(endAction)
+                    } label: {
+                        Text(title(for: endAction))
+                            .font(.subheadline.weight(.semibold))
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 10)
+                            .foregroundStyle(Color.white)
+                            .background(Color.white.opacity(0.22), in: Capsule())
+                    }
+                    .buttonStyle(.plain)
+                    .transition(.opacity.combined(with: .scale(scale: 0.9)))
+                }
+
                 if let button {
                     let prominent = isProminent(button)
                     Button {
@@ -124,6 +214,13 @@ extension VideoPlayer.PlaybackControls {
                 }
             }
             .animation(.easeInOut(duration: 0.25), value: button)
+            .animation(.easeInOut(duration: 0.25), value: endAction)
+            .onChange(of: manager.item.id) { _, newID in
+                // The next download has started: delete the finished one.
+                guard let pendingDeletionID, newID != pendingDeletionID else { return }
+                self.pendingDeletionID = nil
+                Container.shared.downloadService().cancelOrDelete(itemID: pendingDeletionID)
+            }
             .task(id: manager.item.id) {
                 await loadSegments()
                 update(position: manager.seconds.seconds)
