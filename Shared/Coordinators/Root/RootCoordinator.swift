@@ -68,6 +68,7 @@ final class RootCoordinator: ObservableObject {
             #if os(iOS)
             // Personal fork: start downloads after the data stack, so background downloads re-attach.
             _ = Container.shared.downloadService()
+            _ = Container.shared.downloadProgressSync()
             #endif
         } catch {
             throw AppStartupError.dataStack(error)
