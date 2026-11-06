@@ -494,6 +494,8 @@ internal enum L10n {
   }
   /// Are you sure you wish to delete this device? This session will be logged out.
   internal static let deleteDeviceWarning = L10n.tr("Localizable", "deleteDeviceWarning", fallback: "Are you sure you wish to delete this device? This session will be logged out.")
+  /// Delete download
+  internal static let deleteDownload = L10n.tr("Localizable", "deleteDownload", fallback: "Delete download")
   /// Deleted Scene
   internal static let deletedScene = L10n.tr("Localizable", "deletedScene", fallback: "Deleted Scene")
   /// Are you sure you want to delete this item?
@@ -1154,6 +1156,8 @@ internal enum L10n {
   internal static let newUser = L10n.tr("Localizable", "newUser", fallback: "New user")
   /// Next
   internal static let next = L10n.tr("Localizable", "next", fallback: "Next")
+  /// Next & delete
+  internal static let nextAndDelete = L10n.tr("Localizable", "nextAndDelete", fallback: "Next & delete")
   /// Next Episode
   internal static let nextEpisode = L10n.tr("Localizable", "nextEpisode", fallback: "Next Episode")
   /// Next item
