@@ -64,6 +64,12 @@ extension TabItem {
             systemImage: "house.fill"
         ) {
             ContentGroupView(provider: provider)
+                #if os(iOS)
+                // Personal fork: "You're offline" instead of loading forever.
+                    .overlay {
+                        HomeOfflineOverlay()
+                    }
+                #endif
         }
     }
 

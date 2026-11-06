@@ -106,6 +106,14 @@ struct ContentGroupView<Provider: ContentGroupProvider>: View {
         .onSceneWillEnterForeground {
             viewModel.refreshIfPendingChanges()
         }
+        #if os(iOS)
+        // Personal fork: reload when the server can be reached again, after the offline page.
+        .onReceive(Container.shared.serverReachability().$isReachable.dropFirst().removeDuplicates()) { isReachable in
+            if isReachable {
+                viewModel.refresh()
+            }
+        }
+        #endif
         .topBarTrailing {
             if #unavailable(iOS 26.0) {
                 if viewModel.background.is(.refreshing) {
