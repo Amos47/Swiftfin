@@ -283,7 +283,7 @@ private struct BaseItemDtoPosterContextMenu: View {
         switch downloadStore.record(for: item.id)?.state {
         case .none: .notDownloaded
         case .complete: .downloaded
-        case .queued, .downloading, .failed: .downloading
+        case .queued, .waiting, .downloading, .failed: .downloading
         }
     }
     #endif

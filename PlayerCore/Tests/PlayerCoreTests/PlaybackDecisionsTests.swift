@@ -120,4 +120,28 @@ final class PlaybackDecisionsTests: XCTestCase {
         XCTAssertEqual(downloadFallbackDecision(.retryApple), .retryApple)
         XCTAssertEqual(downloadFallbackDecision(.none), .none)
     }
+
+    // MARK: - Reported position
+
+    func testBriefPlayBeforeTheSavedSpotKeepsTheSavedSpot() {
+        // Opened at 0:00 though 7:00 was saved, closed after 4 seconds.
+        XCTAssertEqual(reportedPosition(current: 4, saved: 420, furthestReached: 4, secondsPlayed: 4), 420)
+    }
+
+    func testResumingAndWatchingReportsTheRealPosition() {
+        XCTAssertEqual(reportedPosition(current: 430, saved: 420, furthestReached: 430, secondsPlayed: 10), 430)
+    }
+
+    func testRewindingAfterReachingTheSavedSpotIsKept() {
+        XCTAssertEqual(reportedPosition(current: 60, saved: 420, furthestReached: 425, secondsPlayed: 8), 60)
+    }
+
+    func testLongerViewingIsAlwaysReported() {
+        XCTAssertEqual(reportedPosition(current: 200, saved: 420, furthestReached: 200, secondsPlayed: 200), 200)
+    }
+
+    func testNothingSavedReportsTheRealPosition() {
+        XCTAssertEqual(reportedPosition(current: 4, saved: nil, furthestReached: 4, secondsPlayed: 4), 4)
+        XCTAssertEqual(reportedPosition(current: 4, saved: 0, furthestReached: 4, secondsPlayed: 4), 4)
+    }
 }

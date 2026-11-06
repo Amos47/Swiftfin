@@ -618,6 +618,8 @@ internal enum L10n {
   }
   /// Waiting
   internal static let downloadWaiting = L10n.tr("Localizable", "downloadWaiting", fallback: "Waiting")
+  /// Waiting for server
+  internal static let downloadWaitingForServer = L10n.tr("Localizable", "downloadWaitingForServer", fallback: "Waiting for server")
   /// Dropped frames
   internal static let droppedFrames = L10n.tr("Localizable", "droppedFrames", fallback: "Dropped frames")
   /// This saves the URL as another connection for the existing server and makes it active.
@@ -1218,6 +1220,10 @@ internal enum L10n {
   internal static let noRuntimeLimit = L10n.tr("Localizable", "noRuntimeLimit", fallback: "No runtime limit")
   /// Official rating
   internal static let officialRating = L10n.tr("Localizable", "officialRating", fallback: "Official rating")
+  /// Can't reach %@ right now. Your downloads still play.
+  internal static func offlineMessage(_ p1: Any) -> String {
+    return L10n.tr("Localizable", "offlineMessage", String(describing: p1), fallback: "Can't reach %@ right now. Your downloads still play.")
+  }
   /// OK
   internal static let ok = L10n.tr("Localizable", "ok", fallback: "OK")
   /// On application startup
@@ -1848,6 +1854,8 @@ internal enum L10n {
   internal static let triggerAlreadyExists = L10n.tr("Localizable", "triggerAlreadyExists", fallback: "Trigger already exists")
   /// Triggers
   internal static let triggers = L10n.tr("Localizable", "triggers", fallback: "Triggers")
+  /// Try again
+  internal static let tryAgain = L10n.tr("Localizable", "tryAgain", fallback: "Try again")
   /// TV
   internal static let tv = L10n.tr("Localizable", "tv", fallback: "TV")
   /// TV channel
@@ -2014,6 +2022,8 @@ internal enum L10n {
   internal static let yellow = L10n.tr("Localizable", "yellow", fallback: "Yellow")
   /// Yes
   internal static let yes = L10n.tr("Localizable", "yes", fallback: "Yes")
+  /// You're offline
+  internal static let youreOffline = L10n.tr("Localizable", "youreOffline", fallback: "You're offline")
 }
 // swiftlint:enable explicit_type_interface function_parameter_count identifier_name line_length
 // swiftlint:enable nesting type_body_length type_name vertical_whitespace_opening_braces

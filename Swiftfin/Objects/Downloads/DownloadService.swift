@@ -44,8 +44,11 @@ final class DownloadService: NSObject, ObservableObject {
     /// Per item, the progress of each media selection being downloaded.
     private var selectionProgress: [String: [AVMediaSelection: Double]] = [:]
     private var playSessionIDs: [String: String] = [:]
-    /// Downloads between leaving the queue and having a task, so only one starts at a time.
+    /// Downloads between leaving the queue and having a task, counted towards the limits.
     private var startingIDs: Set<String> = []
+
+    /// How long to wait before asking a busy server again.
+    private let serverBusyRetryDelay: Duration = .seconds(30)
     /// Downloads the user cancelled; other cancellations (force quit) get Retry.
     private var cancelRequestedIDs: Set<String> = []
     /// Keeps the server's conversion alive. The downloader never pauses between segments, and the server ends a
@@ -131,39 +134,49 @@ final class DownloadService: NSObject, ObservableObject {
         startNextIfIdle()
     }
 
-    /// The download's estimated size and the phone's free space, before downloading.
-    func estimate(for item: BaseItemDto) async -> (bytes: Int64, freeBytes: Int64)? {
-        guard let userSession = Container.shared.currentUserSession(),
-              let fullItem = try? await item.getFullItem(userSession: userSession),
-              let mediaSource = fullItem.mediaSources?.first
-        else { return nil }
-
-        let runtime = Double(mediaSource.runTimeTicks ?? fullItem.runTimeTicks ?? 0) / 10_000_000
-        let bytes = estimatedDownloadBytes(streamRequest(for: mediaSource), sourceBitrate: mediaSource.bitrate, runtimeSeconds: runtime)
-        let values = try? URL(fileURLWithPath: NSHomeDirectory()).resourceValues(forKeys: [.volumeAvailableCapacityForImportantUsageKey])
-        return (bytes, values?.volumeAvailableCapacityForImportantUsage ?? 0)
-    }
-
     // MARK: Queue
 
+    /// Starts the queued downloads the limits allow (`downloadsToStart`): one the server shrinks at a time, copies
+    /// alongside, three at most.
     private func startNextIfIdle() {
-        let queue = store.records.map { QueuedDownload(id: $0.id, isQueued: $0.state == .queued) }
-        guard let nextID = nextDownloadToStart(queue, busyIDs: Set(tasks.keys).union(startingIDs)),
-              let next = store.record(for: nextID)
-        else { return }
+        let queued = store.records
+            .filter { $0.state == .queued }
+            .map { QueuedDownload(id: $0.id, copiesVideo: copiesVideo($0)) }
+        let running = Set(tasks.keys).union(startingIDs).map { id in
+            RunningDownload(id: id, copiesVideo: store.record(for: id).map(copiesVideo) ?? true)
+        }
 
-        startingIDs.insert(nextID)
+        for nextID in downloadsToStart(queued: queued, running: running) {
+            guard let next = store.record(for: nextID) else { continue }
+            startingIDs.insert(nextID)
+
+            Task {
+                do {
+                    try await start(next)
+                    startingIDs.remove(nextID)
+                } catch {
+                    startingIDs.remove(nextID)
+                    logger.error("Unable to start download: \(error.localizedDescription)")
+                    fail(itemID: nextID, message: error.localizedDescription)
+                    startNextIfIdle()
+                }
+            }
+        }
+    }
+
+    private func copiesVideo(_ record: DownloadRecord) -> Bool {
+        streamRequest(for: record.mediaSource).copiesVideo
+    }
+
+    /// The server is converting as many downloads as it allows: wait, then queue it again.
+    private func waitForServer(itemID: String) {
+        store.updateAnyUser(itemID: itemID) { $0.state = .waiting }
 
         Task {
-            do {
-                try await start(next)
-                startingIDs.remove(nextID)
-            } catch {
-                startingIDs.remove(nextID)
-                logger.error("Unable to start download: \(error.localizedDescription)")
-                fail(itemID: nextID, message: error.localizedDescription)
-                startNextIfIdle()
-            }
+            try? await Task.sleep(for: serverBusyRetryDelay)
+            guard store.record(for: itemID)?.state == .waiting else { return }
+            store.updateAnyUser(itemID: itemID) { $0.state = .queued }
+            startNextIfIdle()
         }
     }
 
@@ -172,7 +185,8 @@ final class DownloadService: NSObject, ObservableObject {
               let accessToken = userSession.client.accessToken
         else { return }
 
-        let playSessionID = UUID().uuidString
+        // The prefix tells the server this is a download, for its limit across devices.
+        let playSessionID = "download-\(UUID().uuidString)"
         let url = try masterURL(
             for: record,
             serverURL: userSession.client.configuration.url,
@@ -180,6 +194,15 @@ final class DownloadService: NSObject, ObservableObject {
             accessToken: accessToken,
             playSessionID: playSessionID
         )
+
+        // Ask first: a busy server answers 503 before anything is downloaded.
+        var preflight = URLRequest(url: url)
+        preflight.timeoutInterval = 20
+        let (_, response) = try await URLSession.shared.data(for: preflight)
+        if (response as? HTTPURLResponse)?.statusCode == 503 {
+            waitForServer(itemID: record.id)
+            return
+        }
 
         let asset = AVURLAsset(url: url)
         let preferred = try await asset.load(.preferredMediaSelection)

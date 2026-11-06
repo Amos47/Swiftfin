@@ -12,6 +12,10 @@ import FactoryKit
 import Foundation
 import JellyfinAPI
 
+#if os(iOS)
+import PlayerCore
+#endif
+
 // TODO: respond properly to end of playback
 //       - when item changes
 // TODO: only send stop on manager stop, not per-item
@@ -34,6 +38,39 @@ class MediaProgressObserver: ViewModel, MediaPlayerObserver {
     init(item: MediaPlayerItem) {
         self.item = item
         super.init()
+        startTracking(item)
+    }
+
+    // Personal fork: a brief play that never reached the saved spot keeps the saved spot (`reportedPosition`), so
+    // opening something by mistake, or before the resume seek lands, can't wipe where you were.
+    private var savedSeconds: Double?
+    private var furthestSeconds: Double = 0
+    private var itemStartedAt = Date.now
+
+    private func startTracking(_ item: MediaPlayerItem?) {
+        savedSeconds = item?.baseItem.startSeconds?.seconds
+        furthestSeconds = 0
+        itemStartedAt = .now
+    }
+
+    /// The position to report for the current item.
+    private var reportSeconds: Duration? {
+        guard let seconds = manager?.seconds else { return nil }
+        #if os(iOS)
+        // The first moments still show the saved spot, before playback has really moved.
+        if Date.now.timeIntervalSince(itemStartedAt) > 2 {
+            furthestSeconds = max(furthestSeconds, seconds.seconds)
+        }
+        let position = reportedPosition(
+            current: seconds.seconds,
+            saved: savedSeconds,
+            furthestReached: furthestSeconds,
+            secondsPlayed: Date.now.timeIntervalSince(itemStartedAt)
+        )
+        return .seconds(position)
+        #else
+        return seconds
+        #endif
     }
 
     private func sendReport() {
@@ -43,12 +80,12 @@ class MediaProgressObserver: ViewModel, MediaPlayerObserver {
         switch lastPlaybackRequestStatus {
         case .playing:
             if hasSentStart {
-                sendProgressReport(for: item, seconds: manager?.seconds)
+                sendProgressReport(for: item, seconds: reportSeconds)
             } else {
-                sendStartReport(for: item, seconds: manager?.seconds)
+                sendStartReport(for: item, seconds: reportSeconds)
             }
         case .paused:
-            sendProgressReport(for: item, seconds: manager?.seconds, isPaused: true)
+            sendProgressReport(for: item, seconds: reportSeconds, isPaused: true)
         }
     }
 
@@ -82,7 +119,7 @@ class MediaProgressObserver: ViewModel, MediaPlayerObserver {
     private func endPlaybackSession() {
         guard let item else { return }
         recordDownloadProgress(for: item)
-        sendStopReport(for: item, seconds: manager?.seconds)
+        sendStopReport(for: item, seconds: reportSeconds)
     }
 
     /// Personal fork: a download also saves its position locally, as the server may be out of reach.
@@ -91,7 +128,7 @@ class MediaProgressObserver: ViewModel, MediaPlayerObserver {
         guard item.isDownloaded else { return }
         Container.shared.downloadProgressSync().record(
             itemID: item.baseItem.id,
-            positionTicks: manager?.seconds.ticks,
+            positionTicks: reportSeconds?.ticks,
             runtimeTicks: item.baseItem.runTimeTicks
         )
         #endif
@@ -103,6 +140,7 @@ class MediaProgressObserver: ViewModel, MediaPlayerObserver {
         if let item, newItem !== item {
             endPlaybackSession()
             self.item = newItem
+            startTracking(newItem)
             self.hasSentStart = false
             sendReport()
         }

@@ -10,8 +10,8 @@ import FactoryKit
 import JellyfinAPI
 import SwiftUI
 
-/// Personal fork: an episode row's download button. An arrow, then a progress ring (tap to cancel), then a check with
-/// Play and Delete.
+/// Personal fork: an episode row's download button. An arrow (tap downloads straight away), then a progress ring
+/// (tap to cancel), then a check with Play and Delete.
 struct DownloadButton: View {
 
     @Router
@@ -19,11 +19,6 @@ struct DownloadButton: View {
 
     @ObservedObject
     private var store = Container.shared.downloadStore()
-
-    @State
-    private var estimate: (bytes: Int64, freeBytes: Int64)?
-    @State
-    private var isConfirming = false
 
     let item: BaseItemDto
 
@@ -37,14 +32,13 @@ struct DownloadButton: View {
             case .none:
                 Button {
                     Task {
-                        estimate = await service.estimate(for: item)
-                        isConfirming = true
+                        try? await service.download(item)
                     }
                 } label: {
                     Image(systemName: "arrow.down.circle")
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Color.jellyfinPurple)
                 }
-            case .queued:
+            case .queued, .waiting:
                 Button(action: cancel) {
                     DownloadProgressRing(progress: 0)
                 }
@@ -76,22 +70,10 @@ struct DownloadButton: View {
                 }
             }
         }
-        .font(.body)
-        .frame(width: 28, height: 28)
+        .font(.title2)
+        .frame(width: 40, height: 44)
         .contentShape(Rectangle())
         .accessibilityLabel(L10n.download)
-        .confirmationDialog(L10n.download, isPresented: $isConfirming, titleVisibility: .visible) {
-            Button(L10n.download) {
-                Task {
-                    try? await service.download(item)
-                }
-            }
-            Button(L10n.cancel, role: .cancel) {}
-        } message: {
-            if let estimate {
-                Text(DownloadSizes.confirmation(bytes: estimate.bytes, freeBytes: estimate.freeBytes))
-            }
-        }
     }
 
     private func cancel() {
@@ -116,7 +98,7 @@ struct DownloadProgressRing: View {
                 .font(.system(size: 7))
                 .foregroundStyle(Color.jellyfinPurple)
         }
-        .frame(width: 20, height: 20)
+        .frame(width: 26, height: 26)
         .animation(.linear(duration: 0.3), value: progress)
     }
 }
@@ -125,11 +107,5 @@ enum DownloadSizes {
 
     static func format(_ bytes: Int64) -> String {
         ByteCountFormatter.string(fromByteCount: bytes, countStyle: .file)
-    }
-
-    /// "About 250 MB · 15 GB free", with a warning when it may not fit.
-    static func confirmation(bytes: Int64, freeBytes: Int64) -> String {
-        let line = L10n.downloadEstimate(format(bytes), format(freeBytes))
-        return bytes > freeBytes ? "\(line)\n\(L10n.downloadMayNotFit)" : line
     }
 }
