@@ -68,6 +68,16 @@ public enum FallbackDecision: Sendable, Equatable {
     case offerVLC
     /// Silently switch this item to VLC.
     case switchToVLC
+    /// Show the error with no VLC option (downloads only play on the Apple engine).
+    case showError
+}
+
+/// Downloads only ever play on the Apple engine: where a stream would go to VLC, a download shows the error instead.
+public func downloadFallbackDecision(_ decision: FallbackDecision) -> FallbackDecision {
+    switch decision {
+    case .switchToVLC, .offerVLC: .showError
+    default: decision
+    }
 }
 
 /// Start-up failures switch to VLC. Failures after the first frame, or during Picture in Picture, never switch silently:

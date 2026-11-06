@@ -34,7 +34,21 @@ final class DownloadStore: ObservableObject {
     }
 
     @Published
-    private(set) var records: [DownloadRecord] = []
+    private(set) var records: [DownloadRecord] = [] {
+        didSet {
+            PlaybackEngine.downloadedItemIDs = Set(records.filter(\.isComplete).map(\.id))
+        }
+    }
+
+    /// The finished downloads of `seriesID`, in season and episode order.
+    func episodes(ofSeries seriesID: String?) -> [DownloadRecord] {
+        guard let seriesID else { return [] }
+        return records
+            .filter { $0.isComplete && $0.item.seriesID == seriesID }
+            .sorted {
+                ($0.item.parentIndexNumber ?? 0, $0.item.indexNumber ?? 0) < ($1.item.parentIndexNumber ?? 0, $1.item.indexNumber ?? 0)
+            }
+    }
 
     private(set) var serverID: String?
     private(set) var userID: String?

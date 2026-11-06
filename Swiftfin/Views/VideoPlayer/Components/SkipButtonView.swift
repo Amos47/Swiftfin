@@ -85,14 +85,20 @@ extension VideoPlayer.PlaybackControls {
 
         private func loadSegments() async {
             segments = []
-            guard let itemID = manager.item.id, !manager.item.isLiveStream,
-                  let client = Container.shared.currentUserSession()?.client
-            else { return }
+            guard let itemID = manager.item.id, !manager.item.isLiveStream else { return }
 
-            let request = Paths.getItemSegments(itemID: itemID)
-            guard let result = try? await client.send(request).value else { return }
+            let mediaSegments: [MediaSegmentDto]
+            if manager.playbackItem?.isDownloaded == true, let record = Container.shared.downloadStore().record(for: itemID) {
+                // Downloads saved their segments, so the buttons work offline.
+                mediaSegments = record.segments
+            } else {
+                guard let client = Container.shared.currentUserSession()?.client,
+                      let result = try? await client.send(Paths.getItemSegments(itemID: itemID)).value
+                else { return }
+                mediaSegments = result.items ?? []
+            }
 
-            segments = (result.items ?? []).compactMap { segment in
+            segments = mediaSegments.compactMap { segment in
                 let kind: SkipKind? = switch segment.type {
                 case .intro: .intro
                 case .recap: .recap

@@ -29,9 +29,16 @@ enum PlaybackEngine: String, CaseIterable, Displayable, Storable {
     /// Item IDs that failed on the Apple engine and play on VLC until the player closes.
     nonisolated(unsafe) static var vlcFallbackItemIDs: Set<String> = []
 
+    /// Item IDs with a finished download, kept up to date by the iOS `DownloadStore`. Downloads always play on Apple's
+    /// engine, whatever the setting.
+    nonisolated(unsafe) static var downloadedItemIDs: Set<String> = []
+
     /// Whether `item` plays on Apple's engine. Live TV and items that fell back stay on VLC.
     static func usesAppleEngine(for item: BaseItemDto) -> Bool {
         #if os(iOS)
+        if let id = item.id, downloadedItemIDs.contains(id) {
+            return true
+        }
         guard Defaults[.VideoPlayer.playbackEngine] == .automatic, !item.isLiveStream else { return false }
         if let id = item.id, vlcFallbackItemIDs.contains(id) {
             return false

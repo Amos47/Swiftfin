@@ -111,4 +111,13 @@ final class PlaybackDecisionsTests: XCTestCase {
         XCTAssertEqual(fallback(failed: true, hadFrame: true, retried: true, pip: true), .offerVLC)
         XCTAssertEqual(fallback(failed: true, pip: true), .retryApple)
     }
+
+    // MARK: - Downloads
+
+    func testDownloadsNeverGoToVLC() {
+        XCTAssertEqual(downloadFallbackDecision(.switchToVLC), .showError)
+        XCTAssertEqual(downloadFallbackDecision(.offerVLC), .showError)
+        XCTAssertEqual(downloadFallbackDecision(.retryApple), .retryApple)
+        XCTAssertEqual(downloadFallbackDecision(.none), .none)
+    }
 }
