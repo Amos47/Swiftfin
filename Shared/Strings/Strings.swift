@@ -980,6 +980,10 @@ internal enum L10n {
   internal static let larger = L10n.tr("Localizable", "larger", fallback: "Larger")
   /// Largest
   internal static let largest = L10n.tr("Localizable", "largest", fallback: "Largest")
+  /// Last played %@
+  internal static func lastPlayedDate(_ p1: Any) -> String {
+    return L10n.tr("Localizable", "lastPlayedDate", String(describing: p1), fallback: "Last played %@")
+  }
   /// Last run
   internal static let lastRun = L10n.tr("Localizable", "lastRun", fallback: "Last run")
   /// Last ran %@
