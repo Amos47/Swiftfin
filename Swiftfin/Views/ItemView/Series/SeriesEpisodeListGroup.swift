@@ -333,7 +333,15 @@ struct SeriesEpisodeRow: View {
     }
 
     private var detail: String? {
-        episode.progressLabel ?? episode.runTimeLabel
+        let base = episode.progressLabel ?? episode.runTimeLabel
+
+        // Personal fork: when it was last watched, to find a rewatch on the series page.
+        guard let lastPlayed = lastPlayedDateText(
+            isPlayed: episode.userData?.isPlayed == true,
+            lastPlayed: episode.userData?.lastPlayedDate
+        ) else { return base }
+
+        return [base, L10n.lastPlayedDate(lastPlayed)].compactMap(\.self).joined(separator: " · ")
     }
 
     private var thumbnail: some View {
