@@ -185,4 +185,35 @@ final class CardActionsTests: XCTestCase {
     func testCurrentEpisodeAllWatchedIsNil() {
         XCTAssertNil(currentEpisodeID(in: [EpisodeProgress(id: "a", isPlayed: true, progress: 0)], preferredID: nil))
     }
+
+    // MARK: - Download availability
+
+    func testCanDownloadRealEpisodesAndMoviesOnly() {
+        XCTAssertTrue(canDownload(kind: .movie, isMissing: false))
+        XCTAssertTrue(canDownload(kind: .episode, isMissing: false))
+        XCTAssertFalse(canDownload(kind: .series, isMissing: false))
+        XCTAssertFalse(canDownload(kind: .other, isMissing: false))
+    }
+
+    func testCannotDownloadAVirtualFilm() {
+        XCTAssertFalse(canDownload(kind: .movie, isMissing: true))
+        XCTAssertFalse(canDownload(kind: .episode, isMissing: true))
+    }
+
+    func testMenuOffersNoDownloadForAVirtualFilm() {
+        let items = cardMenuItems(
+            kind: .movie, tapPlays: false, hasProgress: false, isPlayed: false, isFavourite: false,
+            downloadState: .notDownloaded, isMissing: true
+        )
+        XCTAssertFalse(items.contains(.download))
+        XCTAssertFalse(items.contains(.deleteDownload))
+    }
+
+    func testMenuStillOffersDownloadForARealFilm() {
+        let items = cardMenuItems(
+            kind: .movie, tapPlays: false, hasProgress: false, isPlayed: false, isFavourite: false,
+            downloadState: .notDownloaded, isMissing: false
+        )
+        XCTAssertTrue(items.contains(.download))
+    }
 }

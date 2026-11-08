@@ -412,7 +412,9 @@ struct SeriesEpisodeRow: View {
 
             // Personal fork: download and "⋯" side by side.
             HStack(spacing: 0) {
-                DownloadButton(item: episode)
+                if !episode.isMissing {
+                    DownloadButton(item: episode)
+                }
 
                 Menu {
                     episode.posterContextMenu

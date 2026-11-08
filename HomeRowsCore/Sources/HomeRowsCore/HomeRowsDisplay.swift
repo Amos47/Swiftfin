@@ -64,7 +64,7 @@ public struct LoadedHomeRow: Sendable {
 /// can't be loaded, so the caller keeps the stock home screen. A row that fails or takes longer than `timeout` is left
 /// out; its request is cancelled.
 public func loadHomeRows(api: HomeRowsAPI, timeout: Duration = .seconds(10)) async -> [LoadedHomeRow]? {
-    guard await api.isSupported(), let configuration = try? await api.configuration() else { return nil }
+    guard await api.isSupported(), let configuration = try? await api.configuration(expand: true) else { return nil }
 
     async let providerList = try? api.providers()
     let candidates = configuration.rows.enumerated().filter { $0.element.enabled && $0.element.isAvailable }

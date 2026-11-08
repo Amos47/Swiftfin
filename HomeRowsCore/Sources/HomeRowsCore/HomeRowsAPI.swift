@@ -68,8 +68,10 @@ public actor HomeRowsAPI {
         return configuration.apiVersion == Self.apiVersion
     }
 
-    public func configuration() async throws -> HomeRowConfiguration {
-        try await HomeRowConfiguration(json: JSONValue.parse(get("HomeRows/Configuration")))
+    /// The layout. `expand` asks the server to replace derived rows (like Movie discovery) with one row per list; only
+    /// the Home screen wants that. The editor stays plain, because the server rejects saving derived ids.
+    public func configuration(expand: Bool = false) async throws -> HomeRowConfiguration {
+        try await HomeRowConfiguration(json: JSONValue.parse(get("HomeRows/Configuration", query: expand ? ["expand": "true"] : [:])))
     }
 
     public func providers() async throws -> [HomeRowProvider] {

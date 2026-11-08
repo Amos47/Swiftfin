@@ -30,7 +30,7 @@ extension ItemView {
         private var downloadStore = Container.shared.downloadStore()
 
         private var canDownload: Bool {
-            provider.item.id != nil && (provider.item.type == .episode || provider.item.type == .movie)
+            provider.item.id != nil && !provider.item.isMissing && (provider.item.type == .episode || provider.item.type == .movie)
         }
         #endif
 
