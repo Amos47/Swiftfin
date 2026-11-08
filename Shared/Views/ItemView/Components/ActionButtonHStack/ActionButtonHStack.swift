@@ -6,9 +6,8 @@
 // Copyright (c) 2026 Jellyfin & Jellyfin Contributors
 //
 
-#if os(iOS)
 import FactoryKit
-#endif
+import HomeRowsCore
 import SwiftUI
 
 extension ItemView {
@@ -33,6 +32,27 @@ extension ItemView {
             provider.item.id != nil && !provider.item.isMissing && (provider.item.type == .episode || provider.item.type == .movie)
         }
         #endif
+
+        // Personal fork: the server's item actions (Watch trailer).
+        @State
+        private var runningActionID: String?
+        @State
+        private var actionError: Error?
+
+        /// The server's answer for this item, or nil while it's still coming.
+        private var serverActions: ServerItemActions? {
+            guard let answer = provider.serverActions, answer.itemID == provider.item.id else { return nil }
+            return answer
+        }
+
+        private var actionPlan: ItemActionPlan {
+            actionButtons(actions: serverActions?.actions ?? [], hasStockTrailers: hasTrailers)
+        }
+
+        /// The stock Trailers button waits for the server's answer, so Watch trailer replaces it instead of swapping in.
+        private var showsStockTrailers: Bool {
+            serverActions != nil && actionPlan.showStockTrailers
+        }
 
         private var hasTrailers: Bool {
             if enabledTrailers.contains(.local), provider.localTrailers.isNotEmpty {
@@ -82,9 +102,11 @@ extension ItemView {
             if (UIDevice.isTV && provider.item.canEdit) ||
                 provider.item.canBePlayed ||
                 provider.item.canBeFavorited ||
-                hasTrailers
+                hasTrailers ||
+                actionPlan.buttons.isNotEmpty
             {
                 contentView
+                    .errorMessage($actionError)
             }
         }
 
@@ -142,9 +164,25 @@ extension ItemView {
                 }
                 #endif
 
+                // MARK: Server actions
+
+                ForEach(actionPlan.buttons) { action in
+                    Button {
+                        play(action)
+                    } label: {
+                        materialLabel(
+                            action.label,
+                            systemImage: action.systemImage,
+                            tint: .pink,
+                            foregroundColor: .primary
+                        )
+                    }
+                    .foregroundStyle(.primary, .secondary)
+                }
+
                 // MARK: Trailer
 
-                if hasTrailers {
+                if showsStockTrailers {
                     TrailerMenu(
                         localTrailers: provider.localTrailers,
                         externalTrailers: provider.item.remoteTrailers ?? []
@@ -181,6 +219,26 @@ extension ItemView {
             .buttonStyle(BasicHoverButtonStyle())
             .font(.title3)
             .fontWeight(.semibold)
+        }
+
+        /// Personal fork: plays a server action's queue. Taps while one is loading are ignored.
+        private func play(_ action: ItemActionButton) {
+            guard runningActionID == nil,
+                  let itemID = provider.item.id,
+                  let session = Container.shared.currentUserSession()
+            else { return }
+
+            runningActionID = action.id
+            Task {
+                defer { runningActionID = nil }
+                do {
+                    let playback = try await ItemActionPlayback.playback(itemID: itemID, action: action, session: session)
+                    router.route(to: .videoPlayer(provider: playback.provider, queue: playback.queue))
+                } catch {
+                    provider.logger.error("Unable to play item action \(action.id): \(error.localizedDescription)")
+                    actionError = ErrorMessage(action.id == ItemActionID.watchTrailer ? L10n.unableToOpenTrailer : L10n.unknownError)
+                }
+            }
         }
 
         #if os(iOS)

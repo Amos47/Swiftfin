@@ -8,6 +8,7 @@
 
 import Defaults
 import Get
+import HomeRowsCore
 import JellyfinAPI
 import SwiftUI
 
@@ -21,6 +22,10 @@ final class ItemContentGroupProvider: ViewModel, ContentGroupProvider {
     private(set) var mediaPlayerItemProvider: MediaPlayerItemProvider?
     @Published
     private(set) var randomBackdropItem: BaseItemDto?
+    /// Personal fork: the server's item actions (Watch trailer); nil until the server answers for this item.
+    @Published
+    private(set) var serverActions: ServerItemActions?
+    private var serverActionsTask: Task<Void, Never>?
 
     let id: String
 
@@ -45,6 +50,7 @@ final class ItemContentGroupProvider: ViewModel, ContentGroupProvider {
 
     func makeGroups(environment: Empty) async throws -> [any ContentGroup] {
         let userSession = try requireUserSession()
+        loadServerActions(userSession: userSession)
         let fullItem = try await item.getFullItem(userSession: userSession, sendNotification: true)
         let newMediaPlayerItemProvider = try await resolveMediaPlayerItemProvider(
             for: fullItem,
@@ -62,6 +68,23 @@ final class ItemContentGroupProvider: ViewModel, ContentGroupProvider {
             item: fullItem,
             itemID: id
         )
+    }
+
+    /// Personal fork: asks the server for the item's actions alongside the page load, without waiting for them, so
+    /// the action row is usually complete when it first shows. Every failure is an empty answer.
+    private func loadServerActions(userSession: UserSession) {
+        serverActionsTask?.cancel()
+        guard let itemID = item.id else {
+            serverActions = ServerItemActions(itemID: nil, actions: [])
+            return
+        }
+
+        let api = HomeRowsService.itemActions(for: userSession)
+        serverActionsTask = Task { [weak self] in
+            let actions = await api.actions(itemID: itemID)
+            guard !Task.isCancelled else { return }
+            self?.serverActions = ServerItemActions(itemID: itemID, actions: actions)
+        }
     }
 
     /// Personal fork: series on iPhone use the new series page (seasons in a drop-down, episodes in one list).

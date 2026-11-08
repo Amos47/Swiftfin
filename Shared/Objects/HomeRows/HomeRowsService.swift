@@ -18,6 +18,7 @@ enum HomeRowsService {
 
     private static var apis: [String: HomeRowsAPI] = [:]
     private static var editors: [ObjectIdentifier: HomeRowsEditor] = [:]
+    private static var itemActionAPIs: [String: ItemActionsAPI] = [:]
 
     /// One rows editor per API, so leaving the editor by any route (tvOS Menu, a tab switch) keeps unsaved edits
     /// for when it's opened again, instead of throwing them away with the screen.
@@ -31,12 +32,29 @@ enum HomeRowsService {
         return editor
     }
 
+    /// The item actions client, on the same transport (and so the same session's credentials) as the HomeRows API.
+    static func itemActions(for session: UserSession) -> ItemActionsAPI {
+        let key = key(for: session)
+        if let api = itemActionAPIs[key] {
+            return api
+        }
+
+        let api = ItemActionsAPI(transport: JellyfinHomeRowsTransport(configuration: session.client.configuration))
+        itemActionAPIs[key] = api
+        return api
+    }
+
+    // The token is part of the key: the transport sends the token it was created with, so signing in again (a new
+    // token) must not reuse an API that would keep getting 401s.
+    private static func key(for session: UserSession) -> String {
+        let configuration = session.client.configuration
+        return [configuration.url.absoluteString, session.user.id, configuration.accessToken ?? ""].joined(separator: "|")
+    }
+
     static func api(for session: UserSession) -> HomeRowsAPI {
         let configuration = session.client.configuration
         let serverKey = configuration.url.absoluteString
-        // The token is part of the key: the transport sends the token it was created with, so signing in again (a
-        // new token) must not reuse an API that would keep getting 401s.
-        let key = [serverKey, session.user.id, configuration.accessToken ?? ""].joined(separator: "|")
+        let key = key(for: session)
         if let api = apis[key] {
             return api
         }
