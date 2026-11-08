@@ -157,3 +157,12 @@ final class ListQueueTests: XCTestCase {
         XCTAssertEqual(ordered.map(\.0), ["a", "b"])
     }
 }
+
+final class OrderedByIDsDuplicateTests: XCTestCase {
+
+    func testDuplicateIDsAppearOnceAtFirstPosition() {
+        let fetched = [("a", 1), ("b", 2)]
+        let ordered = orderedByIDs(fetched, ids: ["a", "b", "a"]) { $0.0 }
+        XCTAssertEqual(ordered.map(\.0), ["a", "b"])
+    }
+}

@@ -51,13 +51,20 @@ final class ItemListMediaPlayerQueue: ObservableObject, MediaPlayerQueue {
     private var cancellables: Set<AnyCancellable> = []
 
     init(items: [BaseItemDto], displayTitle: String) {
-        self.items = items
+        // The same item twice would make Next and the selected row ambiguous.
+        var seen: Set<String> = []
+        self.items = items.filter { item in
+            guard let id = item.id else { return true }
+            return seen.insert(id).inserted
+        }
         self.displayTitle = displayTitle
     }
 
     var videoPlayerBody: some PlatformView {
         ItemListOverlay(items: items) { [weak self] item in
             guard let self else { return }
+            // Tapping the row that's already playing would restart it.
+            guard item.id != manager?.item.id else { return }
             manager?.playNewItem(provider: provider(for: item))
         }
     }

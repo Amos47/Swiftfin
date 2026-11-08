@@ -136,7 +136,8 @@ public func listQueueNeighbours(of currentID: String?, in ids: [String]) -> List
     )
 }
 
-/// `items` in the order of `ids`, leaving out ids with no item (and items not in `ids`).
+/// `items` in the order of `ids`, leaving out ids with no item (and items not in `ids`). An id listed twice
+/// gives its item once, at the first position.
 public func orderedByIDs<Item>(_ items: [Item], ids: [String], id: (Item) -> String?) -> [Item] {
     var byID: [String: Item] = [:]
     for item in items {
@@ -144,5 +145,6 @@ public func orderedByIDs<Item>(_ items: [Item], ids: [String], id: (Item) -> Str
             byID[key] = item
         }
     }
-    return ids.compactMap { byID[$0] }
+    var seen: Set<String> = []
+    return ids.compactMap { seen.insert($0).inserted ? byID[$0] : nil }
 }

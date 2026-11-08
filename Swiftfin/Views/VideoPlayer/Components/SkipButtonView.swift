@@ -40,7 +40,10 @@ extension VideoPlayer.PlaybackControls {
         private func title(for button: SkipButton) -> String {
             switch button {
             case .nextEpisode:
-                L10n.nextEpisode
+                switch nextButtonLabel(nextItemIsEpisode: manager.queue?.nextItem?.item.type == .episode) {
+                case .nextEpisode: L10n.nextEpisode
+                case .next: L10n.next
+                }
             case let .skip(kind, _, _):
                 switch kind {
                 case .intro: L10n.skipIntro

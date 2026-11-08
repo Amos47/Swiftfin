@@ -37,6 +37,8 @@ extension ItemView {
         @State
         private var runningActionID: String?
         @State
+        private var actionTask: Task<Void, Never>?
+        @State
         private var actionError: Error?
 
         /// The server's answer for this item, or nil while it's still coming.
@@ -107,6 +109,10 @@ extension ItemView {
             {
                 contentView
                     .errorMessage($actionError)
+                    .onDisappear {
+                        actionTask?.cancel()
+                        actionTask = nil
+                    }
             }
         }
 
@@ -178,6 +184,7 @@ extension ItemView {
                         )
                     }
                     .foregroundStyle(.primary, .secondary)
+                    .disabled(runningActionID != nil)
                 }
 
                 // MARK: Trailer
@@ -229,10 +236,15 @@ extension ItemView {
             else { return }
 
             runningActionID = action.id
-            Task {
-                defer { runningActionID = nil }
+            actionTask = Task {
+                defer {
+                    runningActionID = nil
+                    actionTask = nil
+                }
                 do {
                     let playback = try await ItemActionPlayback.playback(itemID: itemID, action: action, session: session)
+                    // The page went away while the queue was loading: don't open a player over whatever is on screen.
+                    guard !Task.isCancelled else { return }
                     router.route(to: .videoPlayer(provider: playback.provider, queue: playback.queue))
                 } catch {
                     provider.logger.error("Unable to play item action \(action.id): \(error.localizedDescription)")

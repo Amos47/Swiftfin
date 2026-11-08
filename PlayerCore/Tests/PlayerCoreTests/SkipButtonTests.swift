@@ -95,3 +95,14 @@ final class SkipButtonTests: XCTestCase {
         XCTAssertEqual(button(70, segments: [recap, intro], entered: 70), .skip(.intro, to: 100, prominent: true))
     }
 }
+
+final class NextButtonLabelTests: XCTestCase {
+
+    func testEpisodeNextSaysNextEpisode() {
+        XCTAssertEqual(nextButtonLabel(nextItemIsEpisode: true), .nextEpisode)
+    }
+
+    func testOtherNextSaysNext() {
+        XCTAssertEqual(nextButtonLabel(nextItemIsEpisode: false), .next)
+    }
+}
