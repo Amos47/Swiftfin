@@ -42,7 +42,8 @@ struct HomeRowsAwareHomeSection: View {
     }
 }
 
-/// A link to the rows editor, shown only on a server with HomeRows.
+/// A link to the rows editor. Callers show it only on a server with HomeRows, and run that check from a view that is
+/// always on screen: a row that starts out empty never appears in a Form, so its own `.task` would never run.
 struct HomeRowsEditorButton: View {
 
     @Injected(\.currentUserSession)
@@ -51,23 +52,14 @@ struct HomeRowsEditorButton: View {
     @Router
     private var router
 
-    @State
-    private var isSupported: Bool?
-
     var body: some View {
-        Group {
-            if isSupported == true, let userSession {
-                ChevronButton(L10n.homeScreenRows) {
-                    router.route(to: .homeRowsEditor(
-                        api: HomeRowsService.api(for: userSession),
-                        isAdmin: userSession.user.data.policy?.isAdministrator == true
-                    ))
-                }
+        if let userSession {
+            ChevronButton(L10n.homeScreenRows) {
+                router.route(to: .homeRowsEditor(
+                    api: HomeRowsService.api(for: userSession),
+                    isAdmin: userSession.user.data.policy?.isAdministrator == true
+                ))
             }
-        }
-        .task {
-            guard let userSession else { return }
-            isSupported = await HomeRowsService.api(for: userSession).isSupported()
         }
     }
 }

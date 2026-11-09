@@ -35,6 +35,11 @@ struct SettingsView: View {
     @StateObject
     private var viewModel = SettingsViewModel()
 
+    #if os(iOS)
+    @State
+    private var isHomeRowsSupported = false
+    #endif
+
     // MARK: - Body
 
     var body: some View {
@@ -161,7 +166,9 @@ struct SettingsView: View {
 
             #if os(iOS)
             // Personal fork: the rows editor on servers with HomeRows, see HomeRowsEditor/
-            HomeRowsEditorButton()
+            if isHomeRowsSupported {
+                HomeRowsEditorButton()
+            }
             #endif
 
             ChevronButton(L10n.advanced) {
@@ -172,6 +179,12 @@ struct SettingsView: View {
         } footer: {
             Text(L10n.viewsMayRequireRestart)
         }
+        #if os(iOS)
+        .task {
+                guard let userSession = viewModel.userSession else { return }
+                isHomeRowsSupported = await HomeRowsService.api(for: userSession).isSupported()
+            }
+        #endif
     }
 
     // MARK: - Diagnostics Section
