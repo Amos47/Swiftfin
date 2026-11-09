@@ -82,9 +82,10 @@ class EpisodeMediaPlayerQueue: ViewModel, MediaPlayerQueue {
         .asAnyCancellable()
     }
 
-    /// Personal fork: the series' episodes in play order, fetched once per series with their media sources (no images
-    /// or user data). Previous and Next skip missing, unaired and media-less episodes (`playableNeighbours`), so the
-    /// adjacent-episodes request (which can return a missing one) isn't used.
+    /// Personal fork: the series' episodes in play order, fetched once per series and kept light: no media sources,
+    /// images or user data, and the server leaves out missing ones. Previous and Next skip any missing episode left
+    /// (`playableNeighbours`), so the adjacent-episodes request (which can return a missing one) isn't used. An episode
+    /// with no media fails when it's built, and `playQueueItem` keeps the current one playing.
     private var seriesEpisodes: (seriesID: String, episodes: [BaseItemDto])?
 
     private func episodes(ofSeries seriesID: String) async throws -> [BaseItemDto] {
@@ -94,7 +95,8 @@ class EpisodeMediaPlayerQueue: ViewModel, MediaPlayerQueue {
 
         var parameters = Paths.GetEpisodesParameters()
         parameters.userID = try authenticatedUser.id
-        parameters.fields = .MinimumFields
+        parameters.fields = [.parentID]
+        parameters.isMissing = false
         parameters.enableImages = false
         parameters.enableUserData = false
         let response = try await send(Paths.getEpisodes(seriesID: seriesID, parameters: parameters))

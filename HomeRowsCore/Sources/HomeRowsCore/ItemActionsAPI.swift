@@ -117,6 +117,25 @@ public func queueItemTitle(entry: ItemActionQueueEntry, fallback: QueueItemTitle
     return fallback
 }
 
+/// The player's title per queue item id: the server's title when it names the item; otherwise `fallback`, but only
+/// for an item whose parent (`parentIDs`) is the page's film (`filmID`). Every other item keeps the player's own title,
+/// so it has no entry.
+public func queueItemTitles(
+    entries: [ItemActionQueueEntry],
+    parentIDs: [String: String],
+    filmID: String?,
+    fallback: QueueItemTitle?
+) -> [String: QueueItemTitle] {
+    var titles: [String: QueueItemTitle] = [:]
+    for entry in entries where titles[entry.id] == nil {
+        let isOfFilm = filmID != nil && parentIDs[entry.id] == filmID
+        if let title = queueItemTitle(entry: entry, fallback: isOfFilm ? fallback : nil) {
+            titles[entry.id] = title
+        }
+    }
+    return titles
+}
+
 /// For an older server, the trailer queue's title: the film the page is for, "Trailer · year" under it. Nil without a
 /// film title.
 public func trailerFallbackTitle(filmTitle: String?, year: Int?, trailerLabel: String) -> QueueItemTitle? {

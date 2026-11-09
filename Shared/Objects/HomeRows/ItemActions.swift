@@ -24,8 +24,8 @@ enum ItemActionPlayback {
 
     /// The player's provider and queue for a `play-queue` action: the server's queue ids, fetched as items in one
     /// request and kept in the server's order, leaving out ids the fetch didn't return (deleted) and items that can't
-    /// play (`playableQueue`). Each item keeps the server's title for it; an older server's trailers fall back to
-    /// `item`'s name (the film whose page this is). Throws when the queue fails or nothing in it can play.
+    /// play (`playableQueue`). Each item keeps the server's title for it; on an older server, trailers whose parent is
+    /// `item` (the film whose page this is) fall back to its name. Throws when the queue fails or nothing in it can play.
     @MainActor
     static func playback(
         item: BaseItemDto,
@@ -54,10 +54,14 @@ enum ItemActionPlayback {
         let fallback = isTrailer
             ? trailerFallbackTitle(filmTitle: item.name, year: item.productionYear, trailerLabel: L10n.trailer)
             : nil
-        var titles: [String: QueueItemTitle] = [:]
-        for entry in entries {
-            titles[entry.id] = titles[entry.id] ?? queueItemTitle(entry: entry, fallback: fallback)
+        // The fallback names only trailers of this film; any other item keeps its own title.
+        var parentIDs: [String: String] = [:]
+        for queued in items {
+            if let id = queued.id, let parentID = queued.parentID {
+                parentIDs[id] = parentID
+            }
         }
+        let titles = queueItemTitles(entries: entries, parentIDs: parentIDs, filmID: itemID, fallback: fallback)
 
         let title = isTrailer ? L10n.trailers : action.label
         let queue = ItemListMediaPlayerQueue(items: items, titles: titles, displayTitle: title)

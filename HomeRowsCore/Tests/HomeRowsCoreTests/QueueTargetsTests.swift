@@ -11,8 +11,9 @@ import XCTest
 
 final class QueueTargetsTests: XCTestCase {
 
+    /// As the episode queue sees an episode: no media sources fetched.
     private func ok(_ id: String) -> QueueCandidate {
-        QueueCandidate(id: id, isMissing: false, isUnaired: false, hasMedia: true)
+        QueueCandidate(id: id, isMissing: false, isUnaired: false, hasMedia: nil)
     }
 
     private func missing(_ id: String) -> QueueCandidate {
@@ -27,10 +28,15 @@ final class QueueTargetsTests: XCTestCase {
         XCTAssertTrue(isValidQueueTarget(QueueCandidate(id: "a", isMissing: false, isUnaired: false, hasMedia: nil)))
     }
 
-    func testMissingUnairedOrMedialessIsNotATarget() {
+    func testMissingOrMedialessIsNotATarget() {
         XCTAssertFalse(isValidQueueTarget(missing("a")))
-        XCTAssertFalse(isValidQueueTarget(QueueCandidate(id: "a", isMissing: false, isUnaired: true, hasMedia: true)))
         XCTAssertFalse(isValidQueueTarget(QueueCandidate(id: "a", isMissing: false, isUnaired: false, hasMedia: false)))
+    }
+
+    func testUnairedIsSkippedOnlyWhenAlsoVirtual() {
+        // A real file with a future premiere date plays.
+        XCTAssertTrue(isValidQueueTarget(QueueCandidate(id: "a", isMissing: false, isUnaired: true, hasMedia: nil)))
+        XCTAssertFalse(isValidQueueTarget(QueueCandidate(id: "a", isMissing: true, isUnaired: true, hasMedia: nil)))
     }
 
     // MARK: neighbours
@@ -56,7 +62,7 @@ final class QueueTargetsTests: XCTestCase {
     }
 
     func testSeveralInvalidInARowAreSkipped() {
-        let unaired = QueueCandidate(id: "e4", isMissing: false, isUnaired: true, hasMedia: true)
+        let unaired = QueueCandidate(id: "e4", isMissing: true, isUnaired: true, hasMedia: nil)
         let empty = QueueCandidate(id: "e3", isMissing: false, isUnaired: false, hasMedia: false)
         let episodes = [missing("e0"), ok("e1"), missing("e2"), empty, unaired, ok("e5")]
         let neighbours = playableNeighbours(of: "e1", in: episodes)

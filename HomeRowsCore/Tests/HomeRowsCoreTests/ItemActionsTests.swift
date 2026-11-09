@@ -293,6 +293,27 @@ final class QueueItemTitleTests: XCTestCase {
         XCTAssertNil(queueItemTitle(entry: entry, fallback: nil))
     }
 
+    func testFallbackOnlyForItemsOfThePageFilm() {
+        let entries = [
+            ItemActionQueueEntry(id: "own", title: nil, subtitle: nil),
+            ItemActionQueueEntry(id: "other", title: nil, subtitle: nil),
+            ItemActionQueueEntry(id: "orphan", title: nil, subtitle: nil),
+            ItemActionQueueEntry(id: "named", title: "Heat", subtitle: nil),
+        ]
+        let titles = queueItemTitles(
+            entries: entries,
+            parentIDs: ["own": "film", "other": "another-film", "named": "another-film"],
+            filmID: "film",
+            fallback: fallback
+        )
+        XCTAssertEqual(titles, ["own": fallback, "named": QueueItemTitle(title: "Heat", subtitle: nil)])
+    }
+
+    func testNoFallbackWithoutAFilm() {
+        let entries = [ItemActionQueueEntry(id: "own", title: nil, subtitle: nil)]
+        XCTAssertEqual(queueItemTitles(entries: entries, parentIDs: ["own": "film"], filmID: nil, fallback: fallback), [:])
+    }
+
     func testTrailerFallbackTitle() {
         XCTAssertEqual(
             trailerFallbackTitle(filmTitle: "Dune", year: 2021, trailerLabel: "Trailer"),

@@ -15,6 +15,7 @@ public struct QueueCandidate: Equatable, Sendable {
     public let id: String
     /// A missing (virtual) item: listed by the server but with no file.
     public let isMissing: Bool
+    /// A future premiere date. It rules an item out only together with `isMissing`.
     public let isUnaired: Bool
     /// Whether the item has media sources; nil when they weren't fetched.
     public let hasMedia: Bool?
@@ -27,9 +28,11 @@ public struct QueueCandidate: Equatable, Sendable {
     }
 }
 
-/// An item Previous or Next may play: not missing, aired, and not known to have no media.
+/// An item Previous or Next may play: not missing (virtual, which covers an unaired episode with no file) and not
+/// known to have no media. A real file with a future premiere date plays.
 public func isValidQueueTarget(_ candidate: QueueCandidate) -> Bool {
-    !candidate.isMissing && !candidate.isUnaired && candidate.hasMedia != false
+    let isUnairedPlaceholder = candidate.isUnaired && candidate.isMissing
+    return !candidate.isMissing && !isUnairedPlaceholder && candidate.hasMedia != false
 }
 
 /// The indices of the nearest valid targets before and after the current item.

@@ -12,8 +12,8 @@ import JellyfinAPI
 import PlayerCore
 import SwiftUI
 
-/// Personal fork: the queue while playing a downloaded episode. Next is the next downloaded episode of the series; with
-/// none downloaded, it's the server's next episode when the server can be reached.
+/// Personal fork: the queue while playing a downloaded episode. Next and Previous are the next and previous downloaded
+/// episodes of the series; with none downloaded on that side, the server's episode when the server can be reached.
 @MainActor
 final class DownloadedEpisodeQueue: ObservableObject, MediaPlayerQueue {
 
@@ -23,15 +23,12 @@ final class DownloadedEpisodeQueue: ObservableObject, MediaPlayerQueue {
             serverQueue.manager = manager
             guard let manager else { return }
 
+            // Built from the emitted values: `@Published` emits before the property changes, so reading
+            // `serverQueue.nextItem` or `manager.playbackItem` inside the sink would see the old ones.
             manager.$playbackItem
-                .sink { [weak self] newItem in
-                    self?.update(for: newItem?.baseItem)
-                }
-                .store(in: &cancellables)
-
-            serverQueue.$nextItem
-                .sink { [weak self] _ in
-                    self?.update(for: self?.manager?.playbackItem?.baseItem)
+                .combineLatest(serverQueue.$nextItem, serverQueue.$previousItem)
+                .sink { [weak self] playbackItem, serverNext, serverPrevious in
+                    self?.update(for: playbackItem?.baseItem, serverNext: serverNext, serverPrevious: serverPrevious)
                 }
                 .store(in: &cancellables)
         }
@@ -72,29 +69,46 @@ final class DownloadedEpisodeQueue: ObservableObject, MediaPlayerQueue {
         serverQueue.videoPlayerBody
     }
 
-    private func update(for item: BaseItemDto?) {
+    /// Next and Previous prefer a downloaded episode on that side (it plays offline); otherwise the server's.
+    private func update(for item: BaseItemDto?, serverNext: MediaPlayerItemProvider?, serverPrevious: MediaPlayerItemProvider?) {
         guard let itemID = item?.id else {
             nextDownloadedID = nil
             nextItem = nil
+            previousItem = nil
             hasNextItem = false
+            hasPreviousItem = false
             return
         }
 
-        let episodes = store.episodes(ofSeries: item?.seriesID)
-        nextDownloadedID = nextDownloadedEpisode(
-            after: itemID,
-            in: episodes.map {
-                DownloadedEpisode(id: $0.id, season: $0.item.parentIndexNumber ?? 0, episode: $0.item.indexNumber ?? 0)
-            }
-        )
-
-        if let nextDownloadedID, let record = store.record(for: nextDownloadedID) {
-            nextItem = record.playerItemProvider
-        } else {
-            nextItem = serverQueue.nextItem
+        let episodes = store.episodes(ofSeries: item?.seriesID).map {
+            DownloadedEpisode(id: $0.id, season: $0.item.parentIndexNumber ?? 0, episode: $0.item.indexNumber ?? 0)
         }
-        previousItem = serverQueue.previousItem
+        nextDownloadedID = nextDownloadedEpisode(after: itemID, in: episodes)
+
+        nextItem = provider(
+            for: downloadedQueueSide(downloadedID: nextDownloadedID, hasServerItem: serverNext != nil),
+            server: serverNext
+        )
+        previousItem = provider(
+            for: downloadedQueueSide(
+                downloadedID: previousDownloadedEpisode(before: itemID, in: episodes),
+                hasServerItem: serverPrevious != nil
+            ),
+            server: serverPrevious
+        )
         hasNextItem = nextItem != nil
         hasPreviousItem = previousItem != nil
+    }
+
+    private func provider(for side: DownloadedQueueSide, server: MediaPlayerItemProvider?) -> MediaPlayerItemProvider? {
+        switch side {
+        case let .downloaded(id):
+            // A record that's gone since the list was read falls back to the server's episode.
+            store.record(for: id)?.playerItemProvider ?? server
+        case .server:
+            server
+        case .none:
+            nil
+        }
     }
 }
