@@ -8,6 +8,8 @@
 
 import Combine
 import Foundation
+import HomeRowsCore
+import SwiftUI
 
 // Personal fork: discovery list pages.
 
@@ -19,6 +21,7 @@ final class DiscoveryListFocus: ObservableObject {
     struct Request: Equatable {
         let listID: String
         let filmID: String
+        let postedAt: Date
     }
 
     static let shared = DiscoveryListFocus()
@@ -27,13 +30,27 @@ final class DiscoveryListFocus: ObservableObject {
     private(set) var request: Request?
 
     func focus(filmID: String, listID: String) {
-        request = Request(listID: listID, filmID: filmID)
+        request = Request(listID: listID, filmID: filmID, postedAt: .now)
     }
 
-    /// The film for `listID`'s page, once: a page takes its request so it doesn't scroll again on a later visit.
+    /// Drops the request (a new player opened).
+    func clear() {
+        request = nil
+    }
+
+    /// The film for `listID`'s page, once, and only while the request is fresh: a page takes its request so it doesn't
+    /// scroll again, and a stale one is dropped so a later visit doesn't scroll unexpectedly.
     func take(listID: String) -> String? {
         guard let request, request.listID == listID else { return nil }
         self.request = nil
-        return request.filmID
+        return isFocusRequestFresh(postedAt: request.postedAt, now: .now) ? request.filmID : nil
     }
+}
+
+extension EnvironmentValues {
+
+    /// Personal fork: the discovery list page a card or row is shown on, so opening its film (from a tap or its menu)
+    /// keeps the list, and the film's Watch trailer continues through it.
+    @Entry
+    var discoveryListID: String? = nil
 }

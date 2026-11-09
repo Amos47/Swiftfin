@@ -7,6 +7,7 @@
 //
 
 import FactoryKit
+import HomeRowsCore
 import SwiftUI
 import Transmission
 
@@ -65,6 +66,8 @@ struct VideoPlayer: View {
             (proxy as? AVMediaPlayerProxy)?.containerState = containerState
             #if os(iOS)
             (proxy as? AVMediaPlayerProxy)?.setUpPictureInPicture()
+            // Personal fork: a new player drops any list scroll left over from an earlier close.
+            DiscoveryListFocus.shared.clear()
             #endif
             manager.proxy = proxy
 
@@ -162,7 +165,8 @@ struct VideoPlayer: View {
 
     #if os(iOS)
     /// Personal fork: closing a trailer queue that moved on to another film lands on that film's page, on top of where
-    /// the queue started; a list page underneath scrolls to the film. False when the queue names no other film (an
+    /// the queue started (or back at it, when it's already in the path); a list page underneath scrolls to the film. False when the queue
+    /// names no other film (an
     /// older server, an episode), so the usual close applies.
     private func showFilmAfterClosing() -> Bool {
         guard let target = manager.queue?.closeTarget(for: manager.item),
@@ -174,7 +178,12 @@ struct VideoPlayer: View {
         }
 
         let filmRoute = NavigationRoute.item(id: target.filmID, discoveryListID: target.listID)
-        if presenter.path.last?.id != filmRoute.id {
+        switch closeNavigation(targetID: filmRoute.id, pathIDs: presenter.path.map(\.id)) {
+        case .stay:
+            break
+        case let .popTo(index):
+            presenter.path.removeSubrange((index + 1)...)
+        case .push:
             presenter.push(filmRoute)
         }
         return true

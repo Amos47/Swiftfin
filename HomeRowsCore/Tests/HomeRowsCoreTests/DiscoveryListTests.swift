@@ -226,3 +226,42 @@ final class PageListPresentationTests: XCTestCase {
         XCTAssertNil(presentation.pageListID)
     }
 }
+
+final class CloseNavigationTests: XCTestCase {
+
+    func testAFilmNotInThePathIsPushed() {
+        XCTAssertEqual(closeNavigation(targetID: "item-f2", pathIDs: ["discovery-list-x", "item-f1"]), .push)
+        XCTAssertEqual(closeNavigation(targetID: "item-f2", pathIDs: []), .push)
+    }
+
+    func testAFilmOnTopStays() {
+        XCTAssertEqual(closeNavigation(targetID: "item-f1", pathIDs: ["discovery-list-x", "item-f1"]), .stay)
+    }
+
+    func testAFilmDeeperInThePathIsPoppedBackTo() {
+        XCTAssertEqual(
+            closeNavigation(targetID: "item-f1", pathIDs: ["item-f1", "discovery-list-x", "item-f2"]),
+            .popTo(index: 0)
+        )
+    }
+
+    func testTheNearestCopyIsPoppedBackTo() {
+        XCTAssertEqual(
+            closeNavigation(targetID: "item-f1", pathIDs: ["item-f1", "x", "item-f1", "item-f3"]),
+            .popTo(index: 2)
+        )
+    }
+}
+
+final class FocusFreshnessTests: XCTestCase {
+
+    func testARecentRequestIsFresh() {
+        let posted = Date(timeIntervalSince1970: 1000)
+        XCTAssertTrue(isFocusRequestFresh(postedAt: posted, now: posted.addingTimeInterval(5)))
+    }
+
+    func testAnOldRequestIsStale() {
+        let posted = Date(timeIntervalSince1970: 1000)
+        XCTAssertFalse(isFocusRequestFresh(postedAt: posted, now: posted.addingTimeInterval(31)))
+    }
+}

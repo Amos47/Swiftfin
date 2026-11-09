@@ -6,7 +6,6 @@
 // Copyright (c) 2026 Jellyfin & Jellyfin Contributors
 //
 
-import Defaults
 import FactoryKit
 import HomeRowsCore
 import JellyfinAPI
@@ -105,6 +104,13 @@ private struct DiscoveryListContent: View {
 
     @State
     private var focusedFilmID: String?
+    @State
+    private var isVisible = false
+
+    private struct HighlightTimer: Equatable {
+        let filmID: String?
+        let isVisible: Bool
+    }
 
     private var backdropItem: BaseItemDto? {
         page.items.first { $0.id == page.backdropItemID }
@@ -134,15 +140,28 @@ private struct DiscoveryListContent: View {
                 }
             }
             .onAppear {
+                isVisible = true
                 scrollToFocus(proxy)
+            }
+            .onDisappear {
+                isVisible = false
             }
             .onChange(of: focus.request) {
                 scrollToFocus(proxy)
             }
+            // The outline goes after a few seconds on screen (not while a film page covers the list).
+            .task(id: HighlightTimer(filmID: focusedFilmID, isVisible: isVisible)) {
+                guard focusedFilmID != nil, isVisible else { return }
+                try? await Task.sleep(for: .seconds(4))
+                guard !Task.isCancelled else { return }
+                withAnimation {
+                    focusedFilmID = nil
+                }
+            }
         }
     }
 
-    /// Scrolls to the film the player closed on, once, when it's on this list.
+    /// Scrolls to the film the player closed on, once, when it's on this list, and outlines it for a few seconds.
     private func scrollToFocus(_ proxy: ScrollViewProxy) {
         guard let filmID = focus.take(listID: listID), page.items.contains(where: { $0.id == filmID }) else { return }
         focusedFilmID = filmID
@@ -173,8 +192,6 @@ private struct DiscoveryListHeader: View {
     let page: DiscoveryListPage
     let backdropItem: BaseItemDto?
 
-    private let headerAspectRatio = 1.6
-
     private var backdrop: ImageSource {
         let options = ImageSourceOptions(maxWidth: 1320)
         if let backdropItem {
@@ -183,72 +200,35 @@ private struct DiscoveryListHeader: View {
         return BaseItemDto().imageSource(itemID: page.backdropItemID, .backdrop, environment: options)
     }
 
-    private var overlay: some View {
-        AlternateLayoutView(alignment: .bottom) {
-            Color.clear
-                .aspectRatio(headerAspectRatio, contentMode: .fit)
-        } content: {
-            Text(page.title)
-                .font(.largeTitle)
-                .fontWeight(.semibold)
-                .lineLimit(2)
-                .multilineTextAlignment(.center)
-                .foregroundStyle(.primary)
-                .frame(maxWidth: .infinity)
-                .padding(.bottom, 10)
-                .background(
-                    alignment: .bottom,
-                    extendedBy: .init(vertical: 25, horizontal: EdgeInsets.edgePadding)
-                ) {
-                    Rectangle()
-                        .fill(Material.ultraThin)
-                        .mask(gradient: .eased(.easeOut)) {
-                            (location: 0, opacity: 0)
-                            (location: 0.2, opacity: 1)
-                        }
-                }
-        }
-    }
-
-    private func resolveColor(from image: UIImage, binding: Binding<Color>) {
-        Task.detached(priority: .utility) {
-            guard let color = image.interestingColor() else { return }
-
-            await MainActor.run {
-                binding.wrappedValue = color
-            }
-        }
-    }
-
     var body: some View {
-        overlay
-            .edgePadding(.horizontal)
-            .frame(maxWidth: .infinity)
-            .colorScheme(.dark)
-            .backgroundParallaxHeader(multiplier: 0.3) {
-                StateAdapter(initialValue: Color.secondarySystemFill) { resolvedColor in
-                    MirrorExtensionView(edges: .top) {
-                        AlternateLayoutView {
-                            Color.clear
-                        } content: {
-                            ImageView(backdrop)
-                                .image { (image: UIImage) in
-                                    Image(uiImage: image)
-                                        .resizable()
-                                        .aspectRatio(contentMode: .fill)
-                                        .onAppear {
-                                            resolveColor(from: image, binding: resolvedColor)
-                                        }
-                                }
-                        }
-                        .aspectRatio(headerAspectRatio, contentMode: .fit)
-                        .accessibilityHidden(true)
+        ParallaxBackdropHeader(imageSource: backdrop) {
+            AlternateLayoutView(alignment: .bottom) {
+                Color.clear
+                    .aspectRatio(1.6, contentMode: .fit)
+            } content: {
+                Text(page.title)
+                    .font(.largeTitle)
+                    .fontWeight(.semibold)
+                    .lineLimit(2)
+                    .multilineTextAlignment(.center)
+                    .foregroundStyle(.primary)
+                    .frame(maxWidth: .infinity)
+                    .padding(.bottom, 10)
+                    .background(
+                        alignment: .bottom,
+                        extendedBy: .init(vertical: 25, horizontal: EdgeInsets.edgePadding)
+                    ) {
+                        Rectangle()
+                            .fill(Material.ultraThin)
+                            .mask(gradient: .eased(.easeOut)) {
+                                (location: 0, opacity: 0)
+                                (location: 0.2, opacity: 1)
+                            }
                     }
-                    .bottomEdgeGradient(bottomColor: resolvedColor.wrappedValue)
-                }
             }
-            .accessibilityElement(children: .combine)
-            .accessibilityAddTraits(.isHeader)
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityAddTraits(.isHeader)
     }
 }
 
@@ -269,9 +249,6 @@ private struct DiscoveryListOverviewGroup: ContentGroup {
 
 private struct DiscoveryListOverview: View {
 
-    @Default(.accentColor)
-    private var accentColor
-
     @Router
     private var router
 
@@ -288,39 +265,15 @@ private struct DiscoveryListOverview: View {
         }
     }
 
-    private func primaryButton(_ action: ItemActionButton) -> some View {
-        Button {
-            run(action)
-        } label: {
-            HStack {
-                Image(systemName: action.systemImage)
-
-                Text(action.label)
-            }
-            .font(.callout)
-            .fontWeight(.semibold)
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .backport
-            .glassEffect(
-                .regular.selection(
-                    tint: accentColor,
-                    foregroundColor: accentColor.overlayColor
-                ),
-                in: .capsule
-            )
-        }
-        .buttonBorderShape(.capsule)
-        .buttonStyle(BasicHoverButtonStyle())
-        .frame(height: 44)
-        .disabled(runner.isRunning)
-    }
-
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             SeriesDescription(overview: page.overview)
 
             if let primary = plan.primary {
-                primaryButton(primary)
+                ActionSpotButton(action: primary, isDisabled: runner.isRunning) {
+                    run(primary)
+                }
+                .frame(height: 44)
             }
 
             if plan.row.isNotEmpty {
@@ -369,6 +322,11 @@ private struct DiscoveryListFilms: View {
     let listID: String
     let focusedFilmID: String?
 
+    /// Films with an id, each tagged by a plain `String` so `scrollTo(filmID)` finds it (an optional tag wouldn't match).
+    private var rows: [(id: String, film: BaseItemDto)] {
+        films.compactMap { film in film.id.map { ($0, film) } }
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             if films.isEmpty {
@@ -378,13 +336,15 @@ private struct DiscoveryListFilms: View {
                     .frame(maxWidth: .infinity)
             }
 
-            ForEach(films, id: \.id) { film in
-                SeriesEpisodeRow(episode: film, isCurrent: film.id == focusedFilmID) {
-                    router.route(to: .item(item: film, discoveryListID: listID))
+            ForEach(rows, id: \.id) { row in
+                SeriesEpisodeRow(episode: row.film, isCurrent: row.id == focusedFilmID, showsYear: true) {
+                    router.route(to: .item(item: row.film, discoveryListID: listID))
                 }
-                .id(film.id)
+                .id(row.id)
             }
         }
         .edgePadding(.horizontal)
+        // The rows' menus keep the list when they open the film.
+        .environment(\.discoveryListID, listID)
     }
 }

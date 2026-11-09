@@ -131,18 +131,7 @@ struct PlayButton: View {
 
     /// Personal fork: the big button's label in the accent style, shared by Play and the Watch trailer spot.
     private func accentLabel(@ViewBuilder content: () -> some View) -> some View {
-        HStack(content: content)
-            .font(.callout)
-            .fontWeight(.semibold)
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .backport
-            .glassEffect(
-                .regular.selection(
-                    tint: accentColor,
-                    foregroundColor: accentColor.overlayColor
-                ),
-                in: .capsule
-            )
+        AccentCapsuleLabel(content: content)
     }
 
     private var playButton: some View {
@@ -178,21 +167,12 @@ struct PlayButton: View {
 
     /// Personal fork: Watch trailer in the Play spot, for a film the user doesn't have. Same style as Play.
     private func watchTrailerSpot(_ action: ItemActionButton) -> some View {
-        Button {
+        ActionSpotButton(action: action, isDisabled: actionRunner.isRunning) {
             actionRunner.run(action, item: provider.item, listID: provider.discoveryListID) { provider, queue in
                 router.route(to: .videoPlayer(provider: provider, queue: queue))
             }
-        } label: {
-            accentLabel {
-                Image(systemName: action.systemImage)
-
-                Text(action.label)
-            }
         }
-        .buttonBorderShape(.capsule)
-        .buttonStyle(BasicHoverButtonStyle())
         .coordinatedFocus(ItemView.Component.play)
-        .disabled(actionRunner.isRunning)
     }
 
     /// Personal fork: a film the user doesn't have and the server has no trailer for: plainly grey, not a dimmed Play.

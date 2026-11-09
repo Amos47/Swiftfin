@@ -114,3 +114,25 @@ public func closeTarget(startFilmID: String?, currentEntry: ItemActionQueueEntry
     guard let filmID = currentEntry?.filmID, filmID != startFilmID else { return nil }
     return filmID
 }
+
+/// What closing the player does with the film page it opens.
+public enum CloseNavigation: Equatable, Sendable {
+    /// The film's page is already on top.
+    case stay
+    /// The film's page is deeper in the path: go back to it (the nearest one) instead of pushing a duplicate.
+    case popTo(index: Int)
+    /// Push the film's page.
+    case push
+}
+
+/// How to reach the route `targetID` from a navigation path (`pathIDs`, bottom first).
+public func closeNavigation(targetID: String, pathIDs: [String]) -> CloseNavigation {
+    guard let index = pathIDs.lastIndex(of: targetID) else { return .push }
+    return index == pathIDs.count - 1 ? .stay : .popTo(index: index)
+}
+
+/// Whether a list page's scroll request (posted when the player closed) is still worth acting on. An older one is from
+/// an earlier visit and is dropped, so a later visit doesn't scroll unexpectedly.
+public func isFocusRequestFresh(postedAt: Date, now: Date, lifetime: TimeInterval = 30) -> Bool {
+    now.timeIntervalSince(postedAt) <= lifetime
+}

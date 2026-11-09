@@ -113,46 +113,14 @@ extension ItemView {
                 }
             }
 
-            private func resolveColor(from image: UIImage, binding: Binding<Color>) {
-                Task.detached(priority: .utility) {
-                    guard let color = image.interestingColor() else { return }
-
-                    await MainActor.run {
-                        binding.wrappedValue = color
-                    }
-                }
-            }
-
+            // Personal fork: the backdrop is shared with the discovery list page.
             var body: some View {
-                overlay
-                    .edgePadding(.horizontal)
-                    .frame(maxWidth: .infinity)
-                    .colorScheme(.dark)
-                    .backgroundParallaxHeader(multiplier: 0.3) {
-                        StateAdapter(initialValue: Color.secondarySystemFill) { resolvedColor in
-                            MirrorExtensionView(edges: .top) {
-                                AlternateLayoutView {
-                                    Color.clear
-                                } content: {
-                                    ImageView(provider.item.imageSource(
-                                        .backdrop,
-                                        environment: ImageSourceOptions(maxWidth: 1320)
-                                    ))
-                                    .image { (image: UIImage) in
-                                        Image(uiImage: image)
-                                            .resizable()
-                                            .aspectRatio(contentMode: .fill)
-                                            .onAppear {
-                                                resolveColor(from: image, binding: resolvedColor)
-                                            }
-                                    }
-                                }
-                                .aspectRatio(headerAspectRatio, contentMode: .fit)
-                                .accessibilityHidden(true)
-                            }
-                            .bottomEdgeGradient(bottomColor: resolvedColor.wrappedValue)
-                        }
-                    }
+                ParallaxBackdropHeader(
+                    imageSource: provider.item.imageSource(.backdrop, environment: ImageSourceOptions(maxWidth: 1320)),
+                    aspectRatio: headerAspectRatio
+                ) {
+                    overlay
+                }
             }
         }
     }

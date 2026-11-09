@@ -324,6 +324,8 @@ struct SeriesEpisodeRow: View {
 
     let episode: BaseItemDto
     let isCurrent: Bool
+    /// Whether the detail line leads with the year (a film row on a list page).
+    var showsYear = false
     /// What a tap does instead of playing (a list page's film row opens the film); its menu then offers Play.
     var onSelect: (() -> Void)?
 
@@ -335,10 +337,11 @@ struct SeriesEpisodeRow: View {
     }
 
     private var detail: String? {
-        // A film row (list page) leads with its year.
-        let year = episode.type == .movie ? episode.productionYear.map(String.init) : nil
-        let parts = [year, episode.progressLabel ?? episode.runTimeLabel].compactMap(\.self)
-        let base = parts.isEmpty ? nil : parts.joined(separator: " · ")
+        var base = episode.progressLabel ?? episode.runTimeLabel
+        // Personal fork: a film row (list page) leads with its year.
+        if showsYear, let year = episode.productionYear {
+            base = [String(year), base].compactMap(\.self).joined(separator: " · ")
+        }
 
         // Personal fork: when it was last watched, to find a rewatch on the series page.
         guard let lastPlayed = lastPlayedDateText(
