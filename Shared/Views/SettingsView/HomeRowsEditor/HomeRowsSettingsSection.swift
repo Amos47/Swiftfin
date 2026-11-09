@@ -13,8 +13,37 @@ import SwiftUI
 // Personal fork: Custom Home Rows.
 
 /// The Home section of Customize: on a server with HomeRows, a link to the rows editor in place of the local home
-/// toggles (the server's rows have their own settings); otherwise Swiftfin's own Home section.
+/// toggles (the server's rows have their own settings); otherwise Swiftfin's own Home section. On iOS the link lives
+/// in Settings' Customize section (`HomeRowsEditorButton`), so here it only falls back to the local toggles.
 struct HomeRowsAwareHomeSection: View {
+
+    @Injected(\.currentUserSession)
+    private var userSession: UserSession?
+
+    @State
+    private var isSupported: Bool?
+
+    var body: some View {
+        Group {
+            if isSupported == true {
+                #if !os(iOS)
+                Section(L10n.home) {
+                    HomeRowsEditorButton()
+                }
+                #endif
+            } else {
+                CustomizeViewsSettings.HomeSection()
+            }
+        }
+        .task {
+            guard let userSession else { return }
+            isSupported = await HomeRowsService.api(for: userSession).isSupported()
+        }
+    }
+}
+
+/// A link to the rows editor, shown only on a server with HomeRows.
+struct HomeRowsEditorButton: View {
 
     @Injected(\.currentUserSession)
     private var userSession: UserSession?
@@ -28,16 +57,12 @@ struct HomeRowsAwareHomeSection: View {
     var body: some View {
         Group {
             if isSupported == true, let userSession {
-                Section(L10n.home) {
-                    ChevronButton(L10n.homeScreenRows) {
-                        router.route(to: .homeRowsEditor(
-                            api: HomeRowsService.api(for: userSession),
-                            isAdmin: userSession.user.data.policy?.isAdministrator == true
-                        ))
-                    }
+                ChevronButton(L10n.homeScreenRows) {
+                    router.route(to: .homeRowsEditor(
+                        api: HomeRowsService.api(for: userSession),
+                        isAdmin: userSession.user.data.policy?.isAdministrator == true
+                    ))
                 }
-            } else {
-                CustomizeViewsSettings.HomeSection()
             }
         }
         .task {

@@ -159,6 +159,11 @@ struct SettingsView: View {
 
             ColorPicker(L10n.accentColor, selection: $accentColor, supportsOpacity: false)
 
+            #if os(iOS)
+            // Personal fork: the rows editor on servers with HomeRows, see HomeRowsEditor/
+            HomeRowsEditorButton()
+            #endif
+
             ChevronButton(L10n.advanced) {
                 router.route(to: .customizeSettingsView)
             }
