@@ -63,12 +63,21 @@ func homeRowGroups(_ rows: [LoadedHomeRow]) -> [any ContentGroup] {
             case .square: (.square, .small)
             default: (.landscape, .medium)
             }
+            var environment = PosterGroup<HomeRowLibrary>.Environment.default
+            #if os(iOS)
+            // A discovery row's title and See all open its list page; without `PageListId` (an older server) the row
+            // keeps its own See all.
+            if let listID = loaded.items.presentation.pageListID {
+                environment.headerRoute = .discoveryList(listID: listID, title: loaded.title)
+            }
+            #endif
             return HomeRowPosterGroup(
                 group: PosterGroup(
                     id: "home-row-\(loaded.row.id.uuidString)",
                     library: library,
                     posterDisplayType: displayType,
-                    posterSize: size
+                    posterSize: size,
+                    environment: environment
                 )
             )
         }

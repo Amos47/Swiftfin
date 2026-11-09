@@ -13,6 +13,9 @@ struct PosterGroup<Library: PagingLibrary>: ContentGroup where Library.Element: 
     struct Environment: WithDefaultValue, WithViewContext {
 
         var isHeaderButtonEnabled: Bool = true
+        /// Personal fork: where the header (title and See all) goes instead of the row's library (a discovery list's
+        /// page).
+        var headerRoute: NavigationRoute?
         var viewContext: ViewContext = .init()
 
         static var `default`: Self {

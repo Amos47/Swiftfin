@@ -14,4 +14,10 @@ extension Notifications.Key {
     static var homeRowsDidChange: Key<Void> {
         Key("homeRowsDidChange")
     }
+
+    /// Posted after a Save or Download succeeds (film page or player). Home rebuilds its whole layout the next time it
+    /// appears (not behind the player), so a row that was empty, such as Saved, shows up.
+    static var homeRowsNeedRebuild: Key<Void> {
+        Key("homeRowsNeedRebuild")
+    }
 }

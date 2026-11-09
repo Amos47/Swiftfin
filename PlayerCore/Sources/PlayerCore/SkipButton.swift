@@ -72,3 +72,14 @@ public func skipButton(
 
     return nil
 }
+
+/// What the player's Next button says.
+public enum NextButtonLabel: Sendable, Equatable {
+    case nextEpisode
+    case next
+}
+
+/// "Next Episode" only when the next queue item is an episode; trailers and other lists say "Next".
+public func nextButtonLabel(nextItemIsEpisode: Bool) -> NextButtonLabel {
+    nextItemIsEpisode ? .nextEpisode : .next
+}

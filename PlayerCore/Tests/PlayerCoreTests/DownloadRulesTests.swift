@@ -148,6 +148,27 @@ final class DownloadRulesTests: XCTestCase {
         XCTAssertNil(nextDownloadedEpisode(after: "unknown", in: episodes))
     }
 
+    func testPreviousDownloadedEpisodeSkipsGaps() {
+        let episodes = [
+            DownloadedEpisode(id: "s2e1", season: 2, episode: 1),
+            DownloadedEpisode(id: "s1e3", season: 1, episode: 3),
+            DownloadedEpisode(id: "s1e1", season: 1, episode: 1),
+        ]
+        XCTAssertEqual(previousDownloadedEpisode(before: "s2e1", in: episodes), "s1e3")
+        XCTAssertEqual(previousDownloadedEpisode(before: "s1e3", in: episodes), "s1e1")
+        XCTAssertNil(previousDownloadedEpisode(before: "s1e1", in: episodes))
+        XCTAssertNil(previousDownloadedEpisode(before: "unknown", in: episodes))
+    }
+
+    func testDownloadedQueueSidesPreferDownloads() {
+        XCTAssertEqual(
+            downloadedQueueSide(downloadedID: "d", hasServerItem: true),
+            .downloaded(id: "d")
+        )
+        XCTAssertEqual(downloadedQueueSide(downloadedID: nil, hasServerItem: true), .server)
+        XCTAssertEqual(downloadedQueueSide(downloadedID: nil, hasServerItem: false), .none)
+    }
+
     // MARK: - End action
 
     func testEndActionNextAndDelete() {

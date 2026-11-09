@@ -324,6 +324,10 @@ struct SeriesEpisodeRow: View {
 
     let episode: BaseItemDto
     let isCurrent: Bool
+    /// Whether the detail line leads with the year (a film row on a list page).
+    var showsYear = false
+    /// What a tap does instead of playing (a list page's film row opens the film); its menu then offers Play.
+    var onSelect: (() -> Void)?
 
     private var title: String {
         if let number = episode.indexNumber {
@@ -333,7 +337,11 @@ struct SeriesEpisodeRow: View {
     }
 
     private var detail: String? {
-        let base = episode.progressLabel ?? episode.runTimeLabel
+        var base = episode.progressLabel ?? episode.runTimeLabel
+        // Personal fork: a film row (list page) leads with its year.
+        if showsYear, let year = episode.productionYear {
+            base = [String(year), base].compactMap(\.self).joined(separator: " · ")
+        }
 
         // Personal fork: when it was last watched, to find a rewatch on the series page.
         guard let lastPlayed = lastPlayedDateText(
@@ -375,7 +383,11 @@ struct SeriesEpisodeRow: View {
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
             Button {
-                episode.play(router: router)
+                if let onSelect {
+                    onSelect()
+                } else {
+                    episode.play(router: router)
+                }
             } label: {
                 HStack(alignment: .top, spacing: 12) {
                     thumbnail
@@ -407,16 +419,18 @@ struct SeriesEpisodeRow: View {
             .buttonStyle(.plain)
             .contextMenu {
                 episode.posterContextMenu
-                    .environment(\.cardTapPlays, true)
+                    .environment(\.cardTapPlays, onSelect == nil)
             }
 
             // Personal fork: download and "⋯" side by side.
             HStack(spacing: 0) {
-                DownloadButton(item: episode)
+                if !episode.isMissing {
+                    DownloadButton(item: episode)
+                }
 
                 Menu {
                     episode.posterContextMenu
-                        .environment(\.cardTapPlays, true)
+                        .environment(\.cardTapPlays, onSelect == nil)
                 } label: {
                     Image(systemName: "ellipsis")
                         .font(.footnote.weight(.bold))

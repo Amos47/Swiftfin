@@ -6,9 +6,8 @@
 // Copyright (c) 2026 Jellyfin & Jellyfin Contributors
 //
 
-#if os(iOS)
 import FactoryKit
-#endif
+import HomeRowsCore
 import SwiftUI
 
 extension ItemView {
@@ -30,9 +29,27 @@ extension ItemView {
         private var downloadStore = Container.shared.downloadStore()
 
         private var canDownload: Bool {
-            provider.item.id != nil && (provider.item.type == .episode || provider.item.type == .movie)
+            provider.item.id != nil && !provider.item.isMissing && (provider.item.type == .episode || provider.item.type == .movie)
         }
         #endif
+
+        // Personal fork: the server's item actions (Watch trailer).
+        @StateObject
+        private var actionRunner = ItemActionRunner()
+
+        /// Watch trailer leaves the row when it's in the Play spot, so the page shows it once.
+        private var actionPlan: ItemActionPlan {
+            actionButtons(
+                actions: provider.currentServerActions?.actions ?? [],
+                hasStockTrailers: hasTrailers,
+                watchTrailerInPlaySpot: provider.playSpotAction != nil
+            )
+        }
+
+        /// The stock Trailers button waits for the server's answer, so Watch trailer replaces it instead of swapping in.
+        private var showsStockTrailers: Bool {
+            provider.currentServerActions != nil && actionPlan.showStockTrailers
+        }
 
         private var hasTrailers: Bool {
             if enabledTrailers.contains(.local), provider.localTrailers.isNotEmpty {
@@ -82,9 +99,15 @@ extension ItemView {
             if (UIDevice.isTV && provider.item.canEdit) ||
                 provider.item.canBePlayed ||
                 provider.item.canBeFavorited ||
-                hasTrailers
+                hasTrailers ||
+                actionPlan.buttons.isNotEmpty ||
+                actionPlan.stateButtons.isNotEmpty
             {
                 contentView
+                    .errorMessage($actionRunner.error)
+                    .onDisappear {
+                        actionRunner.cancel()
+                    }
             }
         }
 
@@ -142,9 +165,48 @@ extension ItemView {
                 }
                 #endif
 
+                // MARK: Server actions
+
+                ForEach(actionPlan.buttons) { action in
+                    Button {
+                        play(action)
+                    } label: {
+                        materialLabel(
+                            action.label,
+                            systemImage: action.systemImage,
+                            tint: .pink,
+                            foregroundColor: .primary
+                        )
+                    }
+                    .foregroundStyle(.primary, .secondary)
+                    .disabled(actionRunner.isRunning)
+                }
+
+                // MARK: Save and Download (server toggle and request actions)
+
+                ForEach(actionPlan.stateButtons) { button in
+                    Button {
+                        perform(button)
+                    } label: {
+                        materialLabel(
+                            button.label,
+                            systemImage: button.systemImage,
+                            isHighlighted: button.isOn,
+                            tint: .jellyfinPurple,
+                            foregroundColor: .primary
+                        )
+                    }
+                    #if !os(tvOS)
+                    .foregroundStyle(.primary, .secondary)
+                    #endif
+                    .isSelected(button.isOn)
+                    .disabled(!button.isEnabled || provider.pendingServerActionIDs.contains(button.id))
+                    .accessibilityLabel(button.label)
+                }
+
                 // MARK: Trailer
 
-                if hasTrailers {
+                if showsStockTrailers {
                     TrailerMenu(
                         localTrailers: provider.localTrailers,
                         externalTrailers: provider.item.remoteTrailers ?? []
@@ -181,6 +243,24 @@ extension ItemView {
             .buttonStyle(BasicHoverButtonStyle())
             .font(.title3)
             .fontWeight(.semibold)
+        }
+
+        /// Personal fork: plays a server action's queue.
+        private func play(_ action: ItemActionButton) {
+            actionRunner.run(action, item: provider.item, listID: provider.discoveryListID) { provider, queue in
+                router.route(to: .videoPlayer(provider: provider, queue: queue))
+            }
+        }
+
+        /// Personal fork: performs a Save or Download action; a failure shows the row's error.
+        private func perform(_ button: ItemActionStateButton) {
+            Task {
+                do {
+                    try await provider.performServerAction(button)
+                } catch {
+                    actionRunner.error = ErrorMessage(L10n.unknownError)
+                }
+            }
         }
 
         #if os(iOS)

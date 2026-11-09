@@ -27,9 +27,6 @@ struct SeriesOverviewGroup: ContentGroup {
         @ObservedObject
         var provider: ItemContentGroupProvider
 
-        @State
-        private var isDescriptionExpanded = false
-
         private var item: BaseItemDto {
             provider.item
         }
@@ -83,37 +80,11 @@ struct SeriesOverviewGroup: ContentGroup {
             .foregroundStyle(.secondary)
         }
 
-        @ViewBuilder
-        private var description: some View {
-            if let overview = item.overview, overview.isNotEmpty {
-                Button {
-                    withAnimation(.easeInOut(duration: 0.2)) {
-                        isDescriptionExpanded.toggle()
-                    }
-                } label: {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(overview)
-                            .lineLimit(isDescriptionExpanded ? nil : 2)
-                            .multilineTextAlignment(.leading)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-
-                        if !isDescriptionExpanded {
-                            Text(L10n.seeMore)
-                                .fontWeight(.semibold)
-                                .foregroundStyle(.secondary)
-                        }
-                    }
-                    .font(.subheadline)
-                }
-                .buttonStyle(.plain)
-            }
-        }
-
         var body: some View {
             VStack(alignment: .leading, spacing: 12) {
                 metadataLine
 
-                description
+                SeriesDescription(overview: item.overview)
 
                 if item.presentPlayButton {
                     PlayButton(provider: provider)
@@ -170,18 +141,7 @@ struct SeriesActionRow: View {
     }
 
     private func label(_ title: String, systemImage: String, isOn: Bool = false, tint: Color = .primary) -> some View {
-        VStack(spacing: 4) {
-            Image(systemName: systemImage)
-                .font(.title3)
-                .foregroundStyle(isOn ? tint : .primary)
-                .frame(height: 26)
-            Text(title)
-                .font(.caption2)
-                .foregroundStyle(.secondary)
-                .lineLimit(1)
-        }
-        .frame(maxWidth: .infinity)
-        .contentShape(Rectangle())
+        SeriesActionLabel(title: title, systemImage: systemImage, isOn: isOn, tint: tint)
     }
 
     @ViewBuilder
@@ -238,5 +198,63 @@ struct SeriesActionRow: View {
             }
             .buttonStyle(.plain)
         }
+    }
+}
+
+/// A series-page description: two lines with See more, tapping expands it. Nothing without an overview.
+struct SeriesDescription: View {
+
+    let overview: String?
+
+    @State
+    private var isExpanded = false
+
+    var body: some View {
+        if let overview, overview.isNotEmpty {
+            Button {
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    isExpanded.toggle()
+                }
+            } label: {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(overview)
+                        .lineLimit(isExpanded ? nil : 2)
+                        .multilineTextAlignment(.leading)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+
+                    if !isExpanded {
+                        Text(L10n.seeMore)
+                            .fontWeight(.semibold)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                .font(.subheadline)
+            }
+            .buttonStyle(.plain)
+        }
+    }
+}
+
+/// One button's look in a series-page action row: an icon over a small caption.
+struct SeriesActionLabel: View {
+
+    let title: String
+    let systemImage: String
+    var isOn: Bool = false
+    var tint: Color = .primary
+
+    var body: some View {
+        VStack(spacing: 4) {
+            Image(systemName: systemImage)
+                .font(.title3)
+                .foregroundStyle(isOn ? tint : .primary)
+                .frame(height: 26)
+            Text(title)
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+        }
+        .frame(maxWidth: .infinity)
+        .contentShape(Rectangle())
     }
 }

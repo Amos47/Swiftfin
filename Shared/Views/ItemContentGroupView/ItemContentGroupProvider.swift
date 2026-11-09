@@ -8,6 +8,7 @@
 
 import Defaults
 import Get
+import HomeRowsCore
 import JellyfinAPI
 import SwiftUI
 
@@ -21,11 +22,49 @@ final class ItemContentGroupProvider: ViewModel, ContentGroupProvider {
     private(set) var mediaPlayerItemProvider: MediaPlayerItemProvider?
     @Published
     private(set) var randomBackdropItem: BaseItemDto?
+    /// Personal fork: the server's item actions (Watch trailer); nil until the server answers for this item.
+    @Published
+    private(set) var serverActions: ServerItemActions?
+    private var serverActionsTask: Task<Void, Never>?
+    /// Personal fork: the Save/Download actions waiting for the server's answer.
+    @Published
+    private(set) var pendingServerActionIDs: Set<String> = []
+
+    /// Personal fork: the server's answer for this item, or nil while it's still coming.
+    var currentServerActions: ServerItemActions? {
+        guard let serverActions, serverActions.itemID == item.id else { return nil }
+        return serverActions
+    }
+
+    /// Personal fork: whether the item can be played. A virtual film (or missing episode) can't; a series counts, since
+    /// its Play button plays an episode; a season with no folder is reported Virtual but has a playback provider.
+    var isPlayableHere: Bool {
+        !item.isMissing || mediaPlayerItemProvider != nil
+    }
+
+    /// Personal fork: the Watch trailer action when it takes the Play spot, else nil (the row shows it then).
+    var playSpotAction: ItemActionButton? {
+        HomeRowsCore.playSpotAction(
+            isPlayable: !item.isMissing,
+            hasPlaybackProvider: mediaPlayerItemProvider != nil,
+            actions: currentServerActions?.actions ?? []
+        )
+    }
+
+    /// Personal fork: what the big Play spot shows. A virtual film shows Not in your library until the server's
+    /// actions arrive, then swaps once to Watch trailer when the server offers it.
+    var playSpot: PlaySpot {
+        HomeRowsCore.playSpot(isPlayable: isPlayableHere, hasWatchTrailer: playSpotAction != nil)
+    }
 
     let id: String
 
     /// Personal fork: the season to show first on the iPhone series page (seasons open their series there).
     var preferredSeasonID: String?
+
+    /// Personal fork: the discovery list page this film was opened from, so its Watch trailer continues through that
+    /// list.
+    var discoveryListID: String?
 
     var displayTitle: String {
         item.displayTitle
@@ -45,6 +84,7 @@ final class ItemContentGroupProvider: ViewModel, ContentGroupProvider {
 
     func makeGroups(environment: Empty) async throws -> [any ContentGroup] {
         let userSession = try requireUserSession()
+        loadServerActions(userSession: userSession)
         let fullItem = try await item.getFullItem(userSession: userSession, sendNotification: true)
         let newMediaPlayerItemProvider = try await resolveMediaPlayerItemProvider(
             for: fullItem,
@@ -61,6 +101,47 @@ final class ItemContentGroupProvider: ViewModel, ContentGroupProvider {
         return try await _makeGroups(
             item: fullItem,
             itemID: id
+        )
+    }
+
+    /// Personal fork: asks the server for the item's actions alongside the page load, without waiting for them, so
+    /// the action row is usually complete when it first shows. Every failure is an empty answer.
+    private func loadServerActions(userSession: UserSession) {
+        serverActionsTask?.cancel()
+        guard let itemID = item.id else {
+            serverActions = ServerItemActions(itemID: nil, actions: [])
+            return
+        }
+
+        let api = HomeRowsService.itemActions(for: userSession)
+        serverActionsTask = Task { [weak self] in
+            let actions = await api.actions(itemID: itemID)
+            guard !Task.isCancelled else { return }
+            self?.serverActions = ServerItemActions(itemID: itemID, actions: actions)
+        }
+    }
+
+    /// Personal fork: performs a Save (toggle) or Download (request) action from the action row. A failure rolls a
+    /// toggle back and throws, for the row to show.
+    func performServerAction(_ button: ItemActionStateButton) async throws {
+        guard let itemID = currentServerActions?.itemID,
+              !pendingServerActionIDs.contains(button.id),
+              let session = userSession
+        else { return }
+
+        pendingServerActionIDs.insert(button.id)
+        defer { pendingServerActionIDs.remove(button.id) }
+
+        try await ItemActionPerformer.perform(
+            actionID: button.id,
+            itemID: itemID,
+            session: session,
+            current: { [weak self] in self?.serverActions?.itemID == itemID ? self?.serverActions?.actions ?? [] : [] },
+            pending: { [weak self] in self?.pendingServerActionIDs ?? [] },
+            apply: { [weak self] updated in
+                guard let self, serverActions?.itemID == itemID else { return }
+                serverActions = ServerItemActions(itemID: itemID, actions: updated)
+            }
         )
     }
 

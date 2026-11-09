@@ -36,7 +36,7 @@ extension VideoPlayer.PlaybackControls.Toolbar.ActionButtons {
                 systemImage: VideoPlayerActionButton.playPreviousItem.systemImage
             ) {
                 guard let previousItem = queue.previousItem else { return }
-                manager.playNewItem(provider: previousItem)
+                manager.playQueueItem(previousItem)
             }
             .disabled(queue.previousItem == nil)
         }

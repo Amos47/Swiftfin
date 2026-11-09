@@ -105,6 +105,30 @@ public func nextDownloadedEpisode(after id: String, in episodes: [DownloadedEpis
     return ordered[index + 1].id
 }
 
+/// The downloaded episode before `id` in season and episode order, skipping any that aren't downloaded.
+public func previousDownloadedEpisode(before id: String, in episodes: [DownloadedEpisode]) -> String? {
+    let ordered = episodes.sorted { ($0.season, $0.episode) < ($1.season, $1.episode) }
+    guard let index = ordered.firstIndex(where: { $0.id == id }), index > 0 else { return nil }
+    return ordered[index - 1].id
+}
+
+/// What one side (Previous or Next) of a downloaded episode's queue plays.
+public enum DownloadedQueueSide: Equatable, Sendable {
+    /// A downloaded episode, which plays offline.
+    case downloaded(id: String)
+    /// The server queue's episode on that side.
+    case server
+    case none
+}
+
+/// A downloaded episode on that side wins; otherwise the server's episode, when it has one.
+public func downloadedQueueSide(downloadedID: String?, hasServerItem: Bool) -> DownloadedQueueSide {
+    if let downloadedID {
+        return .downloaded(id: downloadedID)
+    }
+    return hasServerItem ? .server : .none
+}
+
 public enum DownloadEndAction: Equatable, Sendable {
     /// Delete the finished download and play the next downloaded episode.
     case nextAndDelete(nextID: String)

@@ -143,6 +143,39 @@ final class MediaPlayerManager: ViewModel {
     /// Personal fork: set while the hold-to-speed gesture controls the rate.
     var isTemporaryRate = false
 
+    /// Personal fork: set while `playQueueItem` builds the item to switch to.
+    @Published
+    private(set) var isSwitchingItem = false
+
+    /// Personal fork: Previous and Next. Builds `provider`'s item while the current one keeps playing, then switches
+    /// to it. `playNewItem` alone stops the current item first, so a failed build would end playback; here a failure is
+    /// logged and the current item keeps playing. Taps while one is building are ignored.
+    /// `stopOnFailure` is for the switch at the natural end, where there's nothing left to keep playing.
+    func playQueueItem(_ provider: MediaPlayerItemProvider, stopOnFailure: Bool = false) {
+        guard !isSwitchingItem else { return }
+        isSwitchingItem = true
+
+        Task { @MainActor in
+            defer { isSwitchingItem = false }
+            do {
+                let built = try await provider()
+                await playNewItem(provider: MediaPlayerItemProvider(item: built.baseItem, mediaSource: built.mediaSource) { _, _ in built })
+            } catch {
+                logger.error(
+                    stopOnFailure ? "Unable to build the next item; stopping" :
+                        "Unable to build the queue item; the current item keeps playing",
+                    metadata: [
+                        "error": .stringConvertible(error.localizedDescription),
+                        "itemID": .stringConvertible(provider.item.id ?? "Unknown"),
+                    ]
+                )
+                if stopOnFailure {
+                    await stop()
+                }
+            }
+        }
+    }
+
     @Published
     var queue: AnyMediaPlayerQueue? = nil
 
@@ -249,7 +282,8 @@ final class MediaPlayerManager: ViewModel {
         }
 
         if let nextItem = queue?.nextItem, try authenticatedUser.data.configuration?.enableNextEpisodeAutoPlay == true {
-            await self.playNewItem(provider: nextItem)
+            // Personal fork: build before switching; a failed build stops, as there's nothing left to play.
+            playQueueItem(nextItem, stopOnFailure: true)
         } else {
             await self.stop()
         }

@@ -7,6 +7,8 @@
 //
 
 import Combine
+import HomeRowsCore
+import JellyfinAPI
 
 @MainActor
 protocol MediaPlayerQueue: ObservableObject, MediaPlayerObserver, MediaPlayerSupplement {
@@ -21,9 +23,31 @@ protocol MediaPlayerQueue: ObservableObject, MediaPlayerObserver, MediaPlayerSup
     var hasPreviousItemPublisher: Published<Bool>.Publisher { get set }
     var nextItemPublisher: Published<MediaPlayerItemProvider?>.Publisher { get set }
     var previousItemPublisher: Published<MediaPlayerItemProvider?>.Publisher { get set }
+
+    /// Personal fork: the player's title for `item` when the queue knows a better one (a trailer queue names the
+    /// film). Nil keeps the player's own title.
+    func displayTitle(for item: BaseItemDto) -> QueueItemTitle?
+
+    /// Personal fork: the film page to open when the player closes on `item` (a trailer queue that moved on to another
+    /// film). Nil keeps the usual close.
+    func closeTarget(for item: BaseItemDto) -> QueueCloseTarget?
+}
+
+/// Personal fork: the film page closing the player opens, and the list page it came from (scrolled to that film).
+struct QueueCloseTarget: Equatable {
+    let filmID: String
+    let listID: String?
 }
 
 extension MediaPlayerQueue {
+
+    func displayTitle(for item: BaseItemDto) -> QueueItemTitle? {
+        nil
+    }
+
+    func closeTarget(for item: BaseItemDto) -> QueueCloseTarget? {
+        nil
+    }
 
     var hasNextItem: Bool {
         nextItem != nil
@@ -61,6 +85,14 @@ class AnyMediaPlayerQueue: MediaPlayerQueue {
         wrapped.id
     }
 
+    func displayTitle(for item: BaseItemDto) -> QueueItemTitle? {
+        wrapped.displayTitle(for: item)
+    }
+
+    func closeTarget(for item: BaseItemDto) -> QueueCloseTarget? {
+        wrapped.closeTarget(for: item)
+    }
+
     weak var manager: MediaPlayerManager? {
         get { wrapped.manager }
         set { wrapped.manager = newValue }
@@ -87,5 +119,14 @@ class AnyMediaPlayerQueue: MediaPlayerQueue {
         wrapped
             .videoPlayerBody
             .eraseToAnyView()
+    }
+}
+
+extension BaseItemDto {
+
+    /// Personal fork: what Previous and Next need to know to skip this item (`isValidQueueTarget`). Media sources
+    /// count only when they were fetched.
+    var queueCandidate: QueueCandidate {
+        QueueCandidate(id: id ?? "", isMissing: isMissing, isUnaired: isUnaired, hasMedia: mediaSources.map(\.isNotEmpty))
     }
 }

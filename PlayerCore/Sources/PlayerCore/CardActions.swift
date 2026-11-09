@@ -27,6 +27,12 @@ public func cardTap(kind: CardItemKind, isWide: Bool) -> CardTap {
     return .play
 }
 
+/// Whether a download can be offered. Episodes and movies only, and never one the server lists but doesn't have
+/// (a missing episode, or a discovery film).
+public func canDownload(kind: CardItemKind, isMissing: Bool) -> Bool {
+    !isMissing && (kind == .episode || kind == .movie)
+}
+
 public enum CardMenuItem: Sendable, Equatable {
     case play
     case playFromBeginning
@@ -54,6 +60,7 @@ public enum CardDownloadState: Sendable {
 /// - Parameter canMarkWatched: whether the item can be marked watched (seasons, box sets and folders can, though they
 ///   don't play from a card); nil means only episodes, movies and series.
 /// - Parameter downloadState: episodes and movies get Download, or Delete download once queued or downloaded.
+/// - Parameter isMissing: the server doesn't have the file (a virtual item), so there's nothing to download.
 public func cardMenuItems(
     kind: CardItemKind,
     tapPlays: Bool,
@@ -61,7 +68,8 @@ public func cardMenuItems(
     isPlayed: Bool,
     isFavourite: Bool,
     canMarkWatched: Bool? = nil,
-    downloadState: CardDownloadState = .unavailable
+    downloadState: CardDownloadState = .unavailable,
+    isMissing: Bool = false
 ) -> [CardMenuItem] {
     var items: [CardMenuItem] = []
     let isPlayable = kind != .other
@@ -81,7 +89,7 @@ public func cardMenuItems(
     if canMarkWatched ?? isPlayable {
         items.append(.markWatched(!isPlayed))
     }
-    if kind == .episode || kind == .movie {
+    if canDownload(kind: kind, isMissing: isMissing) {
         switch downloadState {
         case .unavailable: ()
         case .notDownloaded: items.append(.download)

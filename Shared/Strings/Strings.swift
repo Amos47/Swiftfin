@@ -578,6 +578,8 @@ internal enum L10n {
   internal static let discImageDescription = L10n.tr("Localizable", "discImageDescription", fallback: "Square disc art representing physical media like CDs, DVDs, or Blu-rays. Commonly used for music albums and movie collections.")
   /// Disclaimer
   internal static let disclaimer = L10n.tr("Localizable", "disclaimer", fallback: "Disclaimer")
+  /// This list isn't available any more
+  internal static let discoveryListUnavailable = L10n.tr("Localizable", "discoveryListUnavailable", fallback: "This list isn't available any more")
   /// Dismiss
   internal static let dismiss = L10n.tr("Localizable", "dismiss", fallback: "Dismiss")
   /// Display order
@@ -1224,6 +1226,8 @@ internal enum L10n {
   internal static let normal = L10n.tr("Localizable", "normal", fallback: "Normal")
   /// No runtime limit
   internal static let noRuntimeLimit = L10n.tr("Localizable", "noRuntimeLimit", fallback: "No runtime limit")
+  /// Not in your library
+  internal static let notInYourLibrary = L10n.tr("Localizable", "notInYourLibrary", fallback: "Not in your library")
   /// Official rating
   internal static let officialRating = L10n.tr("Localizable", "officialRating", fallback: "Official rating")
   /// Can't reach %@ right now. Your downloads still play.

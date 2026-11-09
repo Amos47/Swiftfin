@@ -271,6 +271,10 @@ private struct BaseItemDtoPosterContextMenu: View {
     @Environment(\.cardTapPlays)
     private var cardTapPlays
 
+    // Personal fork: a list page's row keeps its list when the menu opens the film.
+    @Environment(\.discoveryListID)
+    private var discoveryListID
+
     @State
     private var item: BaseItemDto
 
@@ -320,24 +324,25 @@ private struct BaseItemDtoPosterContextMenu: View {
             isPlayed: isPlayed,
             isFavourite: isFavorite,
             canMarkWatched: item.canBePlayed,
-            downloadState: downloadState
+            downloadState: downloadState,
+            isMissing: item.isMissing
         )
 
         ForEach(Array(items.enumerated()), id: \.offset) { _, menuItem in
             switch menuItem {
             case .play:
                 Button(L10n.play, systemImage: "play.fill") {
-                    item.play(router: router)
+                    item.play(router: router, discoveryListID: discoveryListID)
                 }
             case .playFromBeginning:
                 Button(L10n.playFromBeginning, systemImage: "arrow.counterclockwise") {
-                    item.play(router: router, fromBeginning: true)
+                    item.play(router: router, fromBeginning: true, discoveryListID: discoveryListID)
                 }
             case .goToItem:
                 if item.id != nil {
                     Button(L10n.goToItem, systemImage: "info.circle") {
                         // By item, not ID, so a season opens its series page.
-                        router.route(to: .item(item: item))
+                        router.route(to: .item(item: item, discoveryListID: discoveryListID))
                     }
                 }
             case .goToShow:

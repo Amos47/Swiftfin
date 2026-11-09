@@ -141,4 +141,27 @@ final class HomeRowsDisplayTests: XCTestCase {
         XCTAssertEqual(rows.map(\.row.id), [enabled])
         XCTAssertFalse(transport.calls.contains { $0.path == "HomeRows/\(disabled.uuidString)/Items" })
     }
+
+    func testDisplayRequestsExpandedRows() async {
+        let id = UUID()
+        let transport = FakeTransport { _, path in
+            path == "HomeRows/Configuration" ? (200, configurationJSON([(id, true)])) : (200, itemsJSON(id.uuidString))
+        }
+        _ = await loadHomeRows(api: HomeRowsAPI(transport: transport, serverKey: "s"))
+
+        let configurationCalls = transport.calls.filter { $0.path == "HomeRows/Configuration" && $0.method == "GET" }
+        XCTAssertTrue(configurationCalls.contains { $0.query == ["expand": "true"] })
+    }
+
+    func testEditorConfigurationStaysPlain() async throws {
+        let transport = FakeTransport { _, _ in (200, configurationJSON([])) }
+        _ = try await HomeRowsAPI(transport: transport, serverKey: "s").configuration()
+        XCTAssertEqual(transport.calls.map(\.query), [[:]])
+    }
+
+    func testSupportProbeStaysPlain() async {
+        let transport = FakeTransport { _, _ in (200, configurationJSON([])) }
+        _ = await HomeRowsAPI(transport: transport, serverKey: "s").isSupported()
+        XCTAssertEqual(transport.calls.map(\.query), [[:]])
+    }
 }

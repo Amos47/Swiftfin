@@ -89,14 +89,14 @@ extension UserSessionManager {
             mediaPlayerManager.proxy?.jumpForward(Defaults[.VideoPlayer.jumpForwardInterval].rawValue)
         case .nextTrack:
             guard let nextItem = mediaPlayerManager.queue?.nextItem else { return }
-            mediaPlayerManager.playNewItem(provider: nextItem)
+            mediaPlayerManager.playQueueItem(nextItem)
         case .pause:
             mediaPlayerManager.setPlaybackRequestStatus(status: .paused)
         case .playPause:
             mediaPlayerManager.togglePlayPause()
         case .previousTrack:
             guard let previousItem = mediaPlayerManager.queue?.previousItem else { return }
-            mediaPlayerManager.playNewItem(provider: previousItem)
+            mediaPlayerManager.playQueueItem(previousItem)
         case .rewind:
             mediaPlayerManager.proxy?.jumpBackward(Defaults[.VideoPlayer.jumpBackwardInterval].rawValue)
         case .seek:

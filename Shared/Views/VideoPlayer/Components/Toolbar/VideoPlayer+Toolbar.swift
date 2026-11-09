@@ -6,6 +6,7 @@
 // Copyright (c) 2026 Jellyfin & Jellyfin Contributors
 //
 
+import HomeRowsCore
 import JellyfinAPI
 import SwiftUI
 
@@ -31,6 +32,12 @@ extension VideoPlayer.PlaybackControls {
 
         @Router
         private var router
+
+        #if os(iOS)
+        /// Personal fork: the server's actions for the item that's playing (Save, Download).
+        @StateObject
+        private var serverActions = PlayerServerActions()
+        #endif
 
         private var fontSize: CGFloat {
             UIDevice.isTV ? 30 : 24
@@ -73,18 +80,23 @@ extension VideoPlayer.PlaybackControls {
                         .frame(width: Self.buttonSize, height: Self.buttonSize)
                 }
 
-                TitleView(item: manager.item)
+                TitleView(item: manager.item, queueTitle: manager.queue?.displayTitle(for: manager.item))
                     .frame(maxWidth: .infinity, alignment: .leading)
 
                 #if os(iOS)
-                // Personal fork: only Audio & Subtitles and AirPlay; everything else lives in Settings.
+                // Personal fork: only Audio & Subtitles and AirPlay; everything else lives in Settings. The server's
+                // Save and Download for the item (a trailer's film) sit beside Audio & Subtitles.
                 HStack(spacing: Self.supplementButtonSpacing) {
+                    VideoPlayer.PlaybackControls.ServerActionButtons(model: serverActions)
                     VideoPlayer.PlaybackControls.AudioSubtitlesButton()
                         .frame(width: Self.buttonSize, height: Self.buttonSize)
                     VideoPlayer.PlaybackControls.AirPlayButton()
                         .frame(width: Self.buttonSize, height: Self.buttonSize)
                 }
                 .padding(.horizontal)
+                .task(id: manager.item.id) {
+                    serverActions.load(itemID: manager.item.id)
+                }
                 #else
                 ActionButtons()
                     .frame(height: Self.buttonSize)
@@ -111,8 +123,14 @@ extension VideoPlayer.PlaybackControls.Toolbar {
         private var subtitleContentSize: CGSize = .zero
 
         let item: BaseItemDto
+        /// Personal fork: the queue's title for the item (a trailer names its film), shown instead of the item's own.
+        var queueTitle: QueueItemTitle?
 
         private var _titleSubtitle: (title: String, subtitle: String?) {
+            if let queueTitle {
+                return (title: queueTitle.title, subtitle: queueTitle.subtitle)
+            }
+
             if item.type == .episode, let parentTitle = item.parentTitle {
                 return (title: parentTitle, subtitle: item.seasonEpisodeLabel)
             }

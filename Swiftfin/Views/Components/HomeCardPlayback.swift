@@ -24,9 +24,15 @@ extension BaseItemDto {
         }
     }
 
-    /// Plays the item (a series plays next up), or opens its page when there's nothing to play.
+    /// Plays the item (a series plays next up), or opens its page when there's nothing to play. `discoveryListID`:
+    /// the list page this is shown on, kept when it opens the item's page instead.
     @MainActor
-    func play(router: Router.Wrapper, in namespace: Namespace.ID? = nil, fromBeginning: Bool = false) {
+    func play(
+        router: Router.Wrapper,
+        in namespace: Namespace.ID? = nil,
+        fromBeginning: Bool = false,
+        discoveryListID: String? = nil
+    ) {
         // A series resolves next up over the network first: a second tap meanwhile must not open a second player.
         guard !CardPlayback.isResolving else { return }
         CardPlayback.isResolving = true
@@ -38,7 +44,7 @@ extension BaseItemDto {
             } else if let namespace {
                 libraryDidSelectElement(router: router, in: namespace)
             } else {
-                router.route(to: .item(item: self))
+                router.route(to: .item(item: self, discoveryListID: discoveryListID))
             }
         }
     }

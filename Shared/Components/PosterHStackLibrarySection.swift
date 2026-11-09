@@ -50,6 +50,11 @@ struct PosterHStackLibrarySection<Library: PagingLibrary>: View
     let group: PosterGroup<Library>
 
     private func routeToLibrary() {
+        // Personal fork: a row can open its own page (a discovery list) instead of its library.
+        if let headerRoute = group.environment.headerRoute {
+            router.route(to: headerRoute)
+            return
+        }
         router.route(to: .library(library: viewModel.library))
     }
 
