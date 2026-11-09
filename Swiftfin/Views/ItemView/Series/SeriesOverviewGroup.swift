@@ -6,12 +6,13 @@
 // Copyright (c) 2026 Jellyfin & Jellyfin Contributors
 //
 
+import HomeRowsCore
 import JellyfinAPI
 import PlayerCore
 import SwiftUI
 
 // Personal fork: the iPhone series page's details: year, rating and genres, an expandable description, the play
-// button and the action row (overflowing into More).
+// button and the action row (overflowing into More), with the server's actions.
 
 struct SeriesOverviewGroup: ContentGroup {
 
@@ -97,22 +98,23 @@ struct SeriesOverviewGroup: ContentGroup {
     }
 }
 
-/// Watched, Favourite, Trailer and Edit, in that order. Up to `maxVisibleActions` show; with more, the last slot becomes
-/// More holding the rest.
+/// Watched, Favourite, the server's actions (Watch trailer when it isn't in the Play spot, Save, Download), Trailers and
+/// Edit, in that order (`seriesActionRow`). Up to `maxVisibleActions` show; with more, the last slot becomes More holding
+/// the rest. A virtual series (discovery) has no Watched or Favourite.
 struct SeriesActionRow: View {
-
-    enum Action: Hashable {
-        case watched
-        case favourite
-        case trailer
-        case edit
-    }
 
     @ObservedObject
     var provider: ItemContentGroupProvider
 
+    @Router
+    private var router
+
     @StoredValue(.User.enabledTrailers)
     private var enabledTrailers: TrailerSelection
+
+    // Personal fork: runs the server's play-queue actions, the same way the film page's row does.
+    @StateObject
+    private var actionRunner = ItemActionRunner()
 
     private var item: BaseItemDto {
         provider.item
@@ -123,21 +125,16 @@ struct SeriesActionRow: View {
             || (enabledTrailers.contains(.external) && item.remoteTrailers?.isNotEmpty == true)
     }
 
-    private var actions: [Action] {
-        var actions: [Action] = []
-        if item.canBePlayed {
-            actions.append(.watched)
-        }
-        if item.canBeFavorited {
-            actions.append(.favourite)
-        }
-        if hasTrailers {
-            actions.append(.trailer)
-        }
-        if item.canEdit {
-            actions.append(.edit)
-        }
-        return actions
+    private var actions: [SeriesRowAction] {
+        seriesActionRow(
+            isMissing: item.isMissing,
+            canBePlayed: item.canBePlayed,
+            canBeFavorited: item.canBeFavorited,
+            hasStockTrailers: hasTrailers,
+            canEdit: item.canEdit,
+            serverActions: provider.currentServerActions?.actions,
+            watchTrailerInPlaySpot: provider.playSpotAction != nil
+        )
     }
 
     private func label(_ title: String, systemImage: String, isOn: Bool = false, tint: Color = .primary) -> some View {
@@ -145,7 +142,7 @@ struct SeriesActionRow: View {
     }
 
     @ViewBuilder
-    private func button(for action: Action) -> some View {
+    private func button(for action: SeriesRowAction) -> some View {
         switch action {
         case .watched:
             let isPlayed = item.userData?.isPlayed == true
@@ -166,7 +163,22 @@ struct SeriesActionRow: View {
             } label: {
                 label(L10n.favorited, systemImage: isFavourite ? "heart.fill" : "heart", isOn: isFavourite, tint: .pink)
             }
-        case .trailer:
+        case let .server(serverAction):
+            Button {
+                play(serverAction)
+            } label: {
+                label(serverAction.label, systemImage: serverAction.systemImage)
+            }
+            .disabled(actionRunner.isRunning)
+        case let .state(stateButton):
+            Button {
+                perform(stateButton)
+            } label: {
+                label(stateButton.label, systemImage: stateButton.systemImage, isOn: stateButton.isOn, tint: .jellyfinPurple)
+            }
+            .disabled(!stateButton.isEnabled || provider.pendingServerActionIDs.contains(stateButton.id))
+            .accessibilityLabel(stateButton.label)
+        case .trailers:
             ItemView.TrailerMenu(localTrailers: provider.localTrailers, externalTrailers: item.remoteTrailers ?? []) {
                 label(L10n.trailers, systemImage: "movieclapper")
             }
@@ -177,18 +189,37 @@ struct SeriesActionRow: View {
         }
     }
 
+    /// Plays a server action's queue (Watch trailer), as the film page's row does.
+    private func play(_ action: ItemActionButton) {
+        actionRunner.run(action, item: item, listID: provider.discoveryListID) { provider, queue in
+            router.route(to: .videoPlayer(provider: provider, queue: queue))
+        }
+    }
+
+    /// Performs Save or Download through the provider (the film page's path); a failure shows the row's error.
+    private func perform(_ button: ItemActionStateButton) {
+        Task {
+            do {
+                try await provider.performServerAction(button)
+            } catch {
+                actionRunner.error = ErrorMessage(L10n.unknownError)
+            }
+        }
+    }
+
     var body: some View {
+        let actions = actions
         let split = splitActions(actions)
 
         if actions.isNotEmpty {
             HStack(spacing: 8) {
-                ForEach(split.visible, id: \.self) { action in
+                ForEach(split.visible) { action in
                     button(for: action)
                 }
 
                 if split.overflow.isNotEmpty {
                     Menu {
-                        ForEach(split.overflow, id: \.self) { action in
+                        ForEach(split.overflow) { action in
                             button(for: action)
                         }
                     } label: {
@@ -197,6 +228,10 @@ struct SeriesActionRow: View {
                 }
             }
             .buttonStyle(.plain)
+            .errorMessage($actionRunner.error)
+            .onDisappear {
+                actionRunner.cancel()
+            }
         }
     }
 }

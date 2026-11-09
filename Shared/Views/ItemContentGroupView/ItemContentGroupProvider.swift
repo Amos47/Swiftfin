@@ -86,10 +86,13 @@ final class ItemContentGroupProvider: ViewModel, ContentGroupProvider {
         let userSession = try requireUserSession()
         loadServerActions(userSession: userSession)
         let fullItem = try await item.getFullItem(userSession: userSession, sendNotification: true)
-        let newMediaPlayerItemProvider = try await resolveMediaPlayerItemProvider(
-            for: fullItem,
-            userSession: userSession
-        )
+        // Personal fork: a series' playback resolve (next up, resume, first episode) can fail for a virtual series
+        // (discovery, no episodes), and must not fail the whole page: it then has no Play button, only the Play spot.
+        let newMediaPlayerItemProvider: MediaPlayerItemProvider? = if fullItem.type == .series {
+            try? await resolveMediaPlayerItemProvider(for: fullItem, userSession: userSession)
+        } else {
+            try await resolveMediaPlayerItemProvider(for: fullItem, userSession: userSession)
+        }
         let newLocalTrailers = try? await localTrailers(for: fullItem)
         let newRandomBackdropItem = try? await randomBackdropItem(for: fullItem)
 
