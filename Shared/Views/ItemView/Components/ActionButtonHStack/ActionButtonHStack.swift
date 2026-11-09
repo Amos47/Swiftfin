@@ -100,7 +100,8 @@ extension ItemView {
                 provider.item.canBePlayed ||
                 provider.item.canBeFavorited ||
                 hasTrailers ||
-                actionPlan.buttons.isNotEmpty
+                actionPlan.buttons.isNotEmpty ||
+                actionPlan.stateButtons.isNotEmpty
             {
                 contentView
                     .errorMessage($actionRunner.error)
@@ -181,6 +182,28 @@ extension ItemView {
                     .disabled(actionRunner.isRunning)
                 }
 
+                // MARK: Save and Download (server toggle and request actions)
+
+                ForEach(actionPlan.stateButtons) { button in
+                    Button {
+                        perform(button)
+                    } label: {
+                        materialLabel(
+                            button.label,
+                            systemImage: button.systemImage,
+                            isHighlighted: button.isOn,
+                            tint: .jellyfinPurple,
+                            foregroundColor: .primary
+                        )
+                    }
+                    #if !os(tvOS)
+                    .foregroundStyle(.primary, .secondary)
+                    #endif
+                    .isSelected(button.isOn)
+                    .disabled(!button.isEnabled || provider.pendingServerActionIDs.contains(button.id))
+                    .accessibilityLabel(button.label)
+                }
+
                 // MARK: Trailer
 
                 if showsStockTrailers {
@@ -226,6 +249,17 @@ extension ItemView {
         private func play(_ action: ItemActionButton) {
             actionRunner.run(action, item: provider.item, listID: provider.discoveryListID) { provider, queue in
                 router.route(to: .videoPlayer(provider: provider, queue: queue))
+            }
+        }
+
+        /// Personal fork: performs a Save or Download action; a failure shows the row's error.
+        private func perform(_ button: ItemActionStateButton) {
+            Task {
+                do {
+                    try await provider.performServerAction(button)
+                } catch {
+                    actionRunner.error = ErrorMessage(L10n.unknownError)
+                }
             }
         }
 

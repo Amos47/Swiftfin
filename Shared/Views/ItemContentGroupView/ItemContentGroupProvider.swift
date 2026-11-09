@@ -26,6 +26,9 @@ final class ItemContentGroupProvider: ViewModel, ContentGroupProvider {
     @Published
     private(set) var serverActions: ServerItemActions?
     private var serverActionsTask: Task<Void, Never>?
+    /// Personal fork: the Save/Download actions waiting for the server's answer.
+    @Published
+    private(set) var pendingServerActionIDs: Set<String> = []
 
     /// Personal fork: the server's answer for this item, or nil while it's still coming.
     var currentServerActions: ServerItemActions? {
@@ -116,6 +119,29 @@ final class ItemContentGroupProvider: ViewModel, ContentGroupProvider {
             guard !Task.isCancelled else { return }
             self?.serverActions = ServerItemActions(itemID: itemID, actions: actions)
         }
+    }
+
+    /// Personal fork: performs a Save (toggle) or Download (request) action from the action row. A failure rolls a
+    /// toggle back and throws, for the row to show.
+    func performServerAction(_ button: ItemActionStateButton) async throws {
+        guard let itemID = currentServerActions?.itemID,
+              !pendingServerActionIDs.contains(button.id),
+              let session = userSession
+        else { return }
+
+        pendingServerActionIDs.insert(button.id)
+        defer { pendingServerActionIDs.remove(button.id) }
+
+        try await ItemActionPerformer.perform(
+            actionID: button.id,
+            itemID: itemID,
+            session: session,
+            current: { [weak self] in self?.serverActions?.itemID == itemID ? self?.serverActions?.actions ?? [] : [] },
+            apply: { [weak self] updated in
+                guard let self, serverActions?.itemID == itemID else { return }
+                serverActions = ServerItemActions(itemID: itemID, actions: updated)
+            }
+        )
     }
 
     /// Personal fork: series on iPhone use the new series page (seasons in a drop-down, episodes in one list).

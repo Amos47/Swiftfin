@@ -17,12 +17,43 @@ public struct ItemAction: Equatable, Sendable {
     public let label: String
     public let icon: String?
     public let kind: String
+    /// The current state of a `toggle` (`on`/`off`) or `request` (`available`, `requested`, `downloading`, `failed`)
+    /// action; nil for a stateless one (and on an older server).
+    public let state: String?
+    /// The label for each state (`Labels`), so a client shows the state's label without knowing the states.
+    public let labels: [String: String]
+    /// Whether a tap does anything (`Enabled`); an action without the field is enabled.
+    public let isEnabled: Bool
 
-    public init(id: String, label: String, icon: String?, kind: String) {
+    public init(
+        id: String,
+        label: String,
+        icon: String?,
+        kind: String,
+        state: String? = nil,
+        labels: [String: String] = [:],
+        enabled: Bool = true
+    ) {
         self.id = id
         self.label = label
         self.icon = icon
         self.kind = kind
+        self.state = state
+        self.labels = labels
+        self.isEnabled = enabled
+    }
+
+    /// The same action in another state, with that state's label.
+    func with(state newState: String) -> ItemAction {
+        ItemAction(
+            id: id,
+            label: labels[newState] ?? label,
+            icon: icon,
+            kind: kind,
+            state: newState,
+            labels: labels,
+            enabled: isEnabled
+        )
     }
 }
 
@@ -48,6 +79,15 @@ public struct ItemActionsAPI: Sendable {
         let query = listID.map { ["listId": $0] } ?? [:]
         return try await fetchQueue(transport: transport, path: "Items/\(itemID)/Actions/\(actionID)/Queue", query: query)
     }
+
+    /// Performs a `toggle` or `request` action (`POST Items/{id}/Actions/{actionId}`) and returns the action as it is
+    /// now. On a trailer, the server performs it on the trailer's film.
+    public func perform(itemID: String, actionID: String) async throws -> ItemAction {
+        let response = try await transport.send(method: "POST", path: "Items/\(itemID)/Actions/\(actionID)", query: [:], body: nil)
+        guard (200 ..< 300).contains(response.status) else { throw HomeRowsError.status(response.status) }
+        guard let action = try itemAction(from: JSONValue.parse(response.body)) else { throw HomeRowsError.invalidResponse }
+        return action
+    }
 }
 
 /// The actions at `path`, in the server's order. Empty on any failure, so a page never shows an error for them.
@@ -57,13 +97,32 @@ func fetchActions(transport: HomeRowsTransport, path: String) async -> [ItemActi
           let entries = (try? JSONValue.parse(response.body))?.array
     else { return [] }
 
-    return entries.compactMap { entry in
-        guard let object = entry.object,
-              let id = object["Id"]?.string,
-              let kind = object["Kind"]?.string
-        else { return nil }
-        return ItemAction(id: id, label: object["Label"]?.string ?? id, icon: object["Icon"]?.string, kind: kind)
+    return entries.compactMap(itemAction(from:))
+}
+
+/// One action from the server's JSON, or nil without an `Id` or `Kind`.
+func itemAction(from value: JSONValue) -> ItemAction? {
+    guard let object = value.object,
+          let id = object["Id"]?.string,
+          let kind = object["Kind"]?.string
+    else { return nil }
+
+    var labels: [String: String] = [:]
+    for (state, label) in object["Labels"]?.object?.entries ?? [] {
+        if let label = nonEmpty(label.string) {
+            labels[state] = label
+        }
     }
+
+    return ItemAction(
+        id: id,
+        label: object["Label"]?.string ?? id,
+        icon: object["Icon"]?.string,
+        kind: kind,
+        state: nonEmpty(object["State"]?.string),
+        labels: labels,
+        enabled: object["Enabled"]?.bool ?? true
+    )
 }
 
 /// The queue at `path`. `ItemIds` gives the order; `Items` adds a title, subtitle and film id per id. An older server
@@ -167,6 +226,16 @@ public func trailerFallbackTitle(filmTitle: String?, year: Int?, trailerLabel: S
 
 public enum ItemActionKind {
     public static let playQueue = "play-queue"
+    /// Save: on or off; a tap flips it.
+    public static let toggle = "toggle"
+    /// Download: a tap records a request; its state follows the request.
+    public static let request = "request"
+}
+
+/// The states of a `toggle` action.
+public enum ItemActionToggleState {
+    public static let on = "on"
+    public static let off = "off"
 }
 
 public enum ItemActionID {
@@ -190,6 +259,8 @@ public struct ItemActionPlan: Equatable, Sendable {
     /// Whether the stock Trailers button (local and external trailers) still shows. Watch trailer replaces it, so the
     /// page has one trailer button.
     public let showStockTrailers: Bool
+    /// One per `toggle` or `request` action (Save, Download), in the server's order.
+    public let stateButtons: [ItemActionStateButton]
 }
 
 /// The buttons for `actions`. `hasStockTrailers` is whether the stock Trailers button would show (local or external
@@ -202,7 +273,8 @@ public func actionButtons(actions: [ItemAction], hasStockTrailers: Bool, watchTr
 
     return ItemActionPlan(
         buttons: inRow.map(ItemActionButton.init),
-        showStockTrailers: hasStockTrailers && !hasWatchTrailer
+        showStockTrailers: hasStockTrailers && !hasWatchTrailer,
+        stateButtons: actions.compactMap(stateButton(for:))
     )
 }
 
@@ -246,12 +318,66 @@ public func playSpot(isPlayable: Bool, hasWatchTrailer: Bool) -> PlaySpot {
     return hasWatchTrailer ? .watchTrailer : .notInLibrary
 }
 
-/// The SF Symbol for a server icon name.
-public func actionSystemImage(icon: String?) -> String {
+/// The SF Symbol for a server icon name; `isOn` fills it for a toggle that's on. Unknown names are `play.fill`.
+public func actionSystemImage(icon: String?, isOn: Bool = false) -> String {
     switch icon {
     case "trailer": "film"
+    case "bookmark": isOn ? "bookmark.fill" : "bookmark"
+    case "download": "arrow.down.circle"
     default: "play.fill"
     }
+}
+
+// MARK: - Toggle and request actions
+
+/// A button for a `toggle` or `request` action, as its current state shows it.
+public struct ItemActionStateButton: Equatable, Sendable, Identifiable {
+    public let id: String
+    public let kind: String
+    /// The current state's label (`Labels[State]`), else the action's own label.
+    public let label: String
+    public let systemImage: String
+    /// A toggle that's on (drawn filled and highlighted).
+    public let isOn: Bool
+    public let isEnabled: Bool
+}
+
+/// The button for `action` when it's a `toggle` or `request`; nil for any other kind (play-queue, or a kind this
+/// client doesn't know, which it ignores).
+public func stateButton(for action: ItemAction) -> ItemActionStateButton? {
+    guard action.kind == ItemActionKind.toggle || action.kind == ItemActionKind.request else { return nil }
+    let isOn = action.kind == ItemActionKind.toggle && action.state == ItemActionToggleState.on
+    return ItemActionStateButton(
+        id: action.id,
+        kind: action.kind,
+        label: action.state.flatMap { action.labels[$0] } ?? action.label,
+        systemImage: actionSystemImage(icon: action.icon, isOn: isOn),
+        isOn: isOn,
+        isEnabled: action.isEnabled
+    )
+}
+
+/// What a tap shows before the server answers: a toggle flipped to its other state. Nil for a request, which waits
+/// for the server.
+public func optimisticAction(_ action: ItemAction) -> ItemAction? {
+    guard action.kind == ItemActionKind.toggle else { return nil }
+    let isOn = action.state == ItemActionToggleState.on
+    return action.with(state: isOn ? ItemActionToggleState.off : ItemActionToggleState.on)
+}
+
+/// `actions` with the action of the same id replaced by `updated`, in place. Without one, `actions` unchanged.
+public func replacingAction(_ updated: ItemAction, in actions: [ItemAction]) -> [ItemAction] {
+    actions.map { $0.id == updated.id ? updated : $0 }
+}
+
+/// The player's top bar: the `toggle` and `request` buttons (never play-queue actions, nor unknown kinds). Up to
+/// `maxInline` show beside Audio & Subtitles; with more, they all go into one overflow menu.
+public func playerActionLayout(
+    actions: [ItemAction],
+    maxInline: Int = 2
+) -> (inline: [ItemActionStateButton], overflow: [ItemActionStateButton]) {
+    let buttons = actions.compactMap(stateButton(for:))
+    return buttons.count > maxInline ? ([], buttons) : (buttons, [])
 }
 
 // MARK: - List queue

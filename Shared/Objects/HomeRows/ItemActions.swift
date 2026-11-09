@@ -194,3 +194,110 @@ final class ItemActionRunner: ObservableObject {
         runCount += 1
     }
 }
+
+// MARK: - Toggle and request actions
+
+/// Personal fork: performs a `toggle` (Save) or `request` (Download) action on an item. A toggle flips at once and
+/// rolls back if the server fails; a request waits for the server. Either way the server's returned action replaces
+/// it. A request also saves the film on the server, so the item's actions are read again after one.
+enum ItemActionPerformer {
+
+    @MainActor
+    static func perform(
+        actionID: String,
+        itemID: String,
+        session: UserSession,
+        current: @MainActor () -> [ItemAction],
+        apply: @MainActor ([ItemAction]) -> Void
+    ) async throws {
+        guard let original = current().first(where: { $0.id == actionID }),
+              stateButton(for: original)?.isEnabled == true
+        else { return }
+
+        let api = HomeRowsService.itemActions(for: session)
+        let guess = optimisticAction(original)
+        if let guess {
+            apply(replacingAction(guess, in: current()))
+        }
+
+        do {
+            let updated = try await api.perform(itemID: itemID, actionID: actionID)
+            apply(replacingAction(updated, in: current()))
+        } catch {
+            if guess != nil {
+                apply(replacingAction(original, in: current()))
+            }
+            throw error
+        }
+
+        if original.kind == ItemActionKind.request {
+            let refreshed = await api.actions(itemID: itemID)
+            if refreshed.isNotEmpty {
+                apply(refreshed)
+            }
+        }
+    }
+}
+
+/// Personal fork: the server's actions for the item the player is showing, for its top bar. Reloads when the item
+/// changes; a trailer's actions are its film's (Save, Download). Play-queue actions never show here.
+@MainActor
+final class PlayerServerActions: ObservableObject {
+
+    @Published
+    private(set) var actions: ServerItemActions?
+    @Published
+    private(set) var pendingIDs: Set<String> = []
+
+    private var loadTask: Task<Void, Never>?
+    private let logger = Logger.swiftfin()
+
+    /// The actions for the item on screen, or none while they load (or for another item).
+    func actions(for itemID: String?) -> [ItemAction] {
+        guard let itemID, let actions, actions.itemID == itemID else { return [] }
+        return actions.actions
+    }
+
+    func load(itemID: String?) {
+        loadTask?.cancel()
+        pendingIDs = []
+        guard let itemID, let session = Container.shared.currentUserSession() else {
+            actions = nil
+            return
+        }
+
+        let api = HomeRowsService.itemActions(for: session)
+        loadTask = Task { [weak self] in
+            let actions = await api.actions(itemID: itemID)
+            guard !Task.isCancelled else { return }
+            self?.actions = ServerItemActions(itemID: itemID, actions: actions)
+        }
+    }
+
+    func perform(_ button: ItemActionStateButton) {
+        guard let itemID = actions?.itemID,
+              !pendingIDs.contains(button.id),
+              let session = Container.shared.currentUserSession()
+        else { return }
+
+        pendingIDs.insert(button.id)
+        Task {
+            defer { pendingIDs.remove(button.id) }
+            do {
+                try await ItemActionPerformer.perform(
+                    actionID: button.id,
+                    itemID: itemID,
+                    session: session,
+                    current: { self.actions(for: itemID) },
+                    apply: { updated in
+                        // The player may have moved on to another item by now.
+                        guard self.actions?.itemID == itemID else { return }
+                        self.actions = ServerItemActions(itemID: itemID, actions: updated)
+                    }
+                )
+            } catch {
+                logger.error("Unable to perform item action \(button.id): \(error.localizedDescription)")
+            }
+        }
+    }
+}
