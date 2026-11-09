@@ -8,6 +8,7 @@
 
 import Defaults
 import FactoryKit
+import HomeRowsCore
 import JellyfinAPI
 import Logging
 import SwiftUI
@@ -22,6 +23,10 @@ struct PlayButton: View {
 
     @Router
     private var router
+
+    // Personal fork: runs Watch trailer when it takes the Play spot, the same way the action row does.
+    @StateObject
+    private var actionRunner = ItemActionRunner()
 
     private var mediaSource: String? {
         guard provider.mediaPlayerItemProvider?.item.mediaSources?.count ?? 0 > 1 else { return nil }
@@ -166,12 +171,75 @@ struct PlayButton: View {
         .disabled(provider.mediaPlayerItemProvider == nil)
     }
 
+    /// Personal fork: Watch trailer in the Play spot, for a film the user doesn't have. Same style as Play.
+    private func watchTrailerButton(_ action: ItemActionButton) -> some View {
+        Button {
+            actionRunner.run(action, itemID: provider.item.id) { provider, queue in
+                router.route(to: .videoPlayer(provider: provider, queue: queue))
+            }
+        } label: {
+            HStack {
+                Image(systemName: action.systemImage)
+
+                Text(action.label)
+            }
+            .font(.callout)
+            .fontWeight(.semibold)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .backport
+            .glassEffect(
+                .regular.selection(
+                    tint: accentColor,
+                    foregroundColor: accentColor.overlayColor
+                ),
+                in: .capsule
+            )
+        }
+        .buttonBorderShape(.capsule)
+        .buttonStyle(BasicHoverButtonStyle())
+        .coordinatedFocus(ItemView.Component.play)
+        .disabled(actionRunner.isRunning)
+    }
+
+    /// Personal fork: a film the user doesn't have and the server has no trailer for: plainly grey, not a dimmed Play.
+    private var notInLibraryButton: some View {
+        Button {} label: {
+            Text(L10n.notInYourLibrary)
+                .font(.callout)
+                .fontWeight(.semibold)
+                .foregroundStyle(.secondary)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .backport
+                .glassEffect(
+                    .regular.tint(.gray.opacity(0.3)).interactive(false),
+                    in: .capsule
+                )
+        }
+        .buttonBorderShape(.capsule)
+        .buttonStyle(BasicHoverButtonStyle())
+        .coordinatedFocus(ItemView.Component.play)
+        .disabled(true)
+    }
+
     var body: some View {
         HStack(alignment: .center, spacing: UIDevice.isTV ? 30 : 10) {
-            playButton
+            switch provider.playSpot {
+            case .play:
+                playButton
 
-            versionMenu
+                versionMenu
+            case .watchTrailer:
+                if let action = provider.playSpotAction {
+                    watchTrailerButton(action)
+                }
+            case .notInLibrary:
+                notInLibraryButton
+            }
         }
         .frame(height: UIDevice.isTV ? 75 : 44)
+        .errorMessage($actionRunner.error)
+        .onDisappear {
+            actionRunner.cancel()
+        }
     }
 }

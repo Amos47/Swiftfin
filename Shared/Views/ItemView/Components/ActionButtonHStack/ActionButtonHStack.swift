@@ -34,26 +34,21 @@ extension ItemView {
         #endif
 
         // Personal fork: the server's item actions (Watch trailer).
-        @State
-        private var runningActionID: String?
-        @State
-        private var actionTask: Task<Void, Never>?
-        @State
-        private var actionError: Error?
+        @StateObject
+        private var actionRunner = ItemActionRunner()
 
-        /// The server's answer for this item, or nil while it's still coming.
-        private var serverActions: ServerItemActions? {
-            guard let answer = provider.serverActions, answer.itemID == provider.item.id else { return nil }
-            return answer
-        }
-
+        /// Watch trailer leaves the row when it's in the Play spot, so the page shows it once.
         private var actionPlan: ItemActionPlan {
-            actionButtons(actions: serverActions?.actions ?? [], hasStockTrailers: hasTrailers)
+            actionButtons(
+                actions: provider.currentServerActions?.actions ?? [],
+                hasStockTrailers: hasTrailers,
+                watchTrailerInPlaySpot: provider.playSpotAction != nil
+            )
         }
 
         /// The stock Trailers button waits for the server's answer, so Watch trailer replaces it instead of swapping in.
         private var showsStockTrailers: Bool {
-            serverActions != nil && actionPlan.showStockTrailers
+            provider.currentServerActions != nil && actionPlan.showStockTrailers
         }
 
         private var hasTrailers: Bool {
@@ -108,10 +103,9 @@ extension ItemView {
                 actionPlan.buttons.isNotEmpty
             {
                 contentView
-                    .errorMessage($actionError)
+                    .errorMessage($actionRunner.error)
                     .onDisappear {
-                        actionTask?.cancel()
-                        actionTask = nil
+                        actionRunner.cancel()
                     }
             }
         }
@@ -184,7 +178,7 @@ extension ItemView {
                         )
                     }
                     .foregroundStyle(.primary, .secondary)
-                    .disabled(runningActionID != nil)
+                    .disabled(actionRunner.isRunning)
                 }
 
                 // MARK: Trailer
@@ -228,28 +222,10 @@ extension ItemView {
             .fontWeight(.semibold)
         }
 
-        /// Personal fork: plays a server action's queue. Taps while one is loading are ignored.
+        /// Personal fork: plays a server action's queue.
         private func play(_ action: ItemActionButton) {
-            guard runningActionID == nil,
-                  let itemID = provider.item.id,
-                  let session = Container.shared.currentUserSession()
-            else { return }
-
-            runningActionID = action.id
-            actionTask = Task {
-                defer {
-                    runningActionID = nil
-                    actionTask = nil
-                }
-                do {
-                    let playback = try await ItemActionPlayback.playback(itemID: itemID, action: action, session: session)
-                    // The page went away while the queue was loading: don't open a player over whatever is on screen.
-                    guard !Task.isCancelled else { return }
-                    router.route(to: .videoPlayer(provider: playback.provider, queue: playback.queue))
-                } catch {
-                    provider.logger.error("Unable to play item action \(action.id): \(error.localizedDescription)")
-                    actionError = ErrorMessage(action.id == ItemActionID.watchTrailer ? L10n.unableToOpenTrailer : L10n.unknownError)
-                }
+            actionRunner.run(action, itemID: provider.item.id) { provider, queue in
+                router.route(to: .videoPlayer(provider: provider, queue: queue))
             }
         }
 

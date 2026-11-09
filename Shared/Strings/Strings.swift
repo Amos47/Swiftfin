@@ -1224,6 +1224,8 @@ internal enum L10n {
   internal static let normal = L10n.tr("Localizable", "normal", fallback: "Normal")
   /// No runtime limit
   internal static let noRuntimeLimit = L10n.tr("Localizable", "noRuntimeLimit", fallback: "No runtime limit")
+  /// Not in your library
+  internal static let notInYourLibrary = L10n.tr("Localizable", "notInYourLibrary", fallback: "Not in your library")
   /// Official rating
   internal static let officialRating = L10n.tr("Localizable", "officialRating", fallback: "Official rating")
   /// Can't reach %@ right now. Your downloads still play.

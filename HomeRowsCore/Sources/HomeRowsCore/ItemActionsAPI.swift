@@ -89,15 +89,49 @@ public struct ItemActionPlan: Equatable, Sendable {
 }
 
 /// The buttons for `actions`. `hasStockTrailers` is whether the stock Trailers button would show (local or external
-/// trailers, as the user's trailer setting allows); a `watch-trailer` action hides it.
-public func actionButtons(actions: [ItemAction], hasStockTrailers: Bool) -> ItemActionPlan {
+/// trailers, as the user's trailer setting allows); a `watch-trailer` action hides it. With `watchTrailerInPlaySpot`
+/// the big Play spot shows Watch trailer, so the row leaves it out and the page still has one trailer button.
+public func actionButtons(actions: [ItemAction], hasStockTrailers: Bool, watchTrailerInPlaySpot: Bool = false) -> ItemActionPlan {
     let playable = actions.filter { $0.kind == ItemActionKind.playQueue }
     let hasWatchTrailer = playable.contains { $0.id == ItemActionID.watchTrailer }
+    let inRow = watchTrailerInPlaySpot ? playable.filter { $0.id != ItemActionID.watchTrailer } : playable
 
     return ItemActionPlan(
-        buttons: playable.map { ItemActionButton(id: $0.id, label: $0.label, systemImage: actionSystemImage(icon: $0.icon)) },
+        buttons: inRow.map(ItemActionButton.init),
         showStockTrailers: hasStockTrailers && !hasWatchTrailer
     )
+}
+
+/// The `watch-trailer` play-queue action as a button, when the server offers one.
+public func watchTrailerButton(actions: [ItemAction]) -> ItemActionButton? {
+    actions
+        .first { $0.kind == ItemActionKind.playQueue && $0.id == ItemActionID.watchTrailer }
+        .map(ItemActionButton.init)
+}
+
+extension ItemActionButton {
+    init(_ action: ItemAction) {
+        self.init(id: action.id, label: action.label, systemImage: actionSystemImage(icon: action.icon))
+    }
+}
+
+/// What the big Play spot on an item page shows.
+public enum PlaySpot: Equatable, Sendable {
+    /// The stock Play button (unchanged).
+    case play
+    /// The server's Watch trailer action, for a film the user doesn't have.
+    case watchTrailer
+    /// A grey, disabled "Not in your library".
+    case notInLibrary
+}
+
+/// `.play` when the item can be played; otherwise `.watchTrailer` when the server offers `watch-trailer`; otherwise
+/// `.notInLibrary` (a stock server, or one with no trailer for the film).
+public func playSpot(isPlayable: Bool, hasWatchTrailer: Bool) -> PlaySpot {
+    if isPlayable {
+        return .play
+    }
+    return hasWatchTrailer ? .watchTrailer : .notInLibrary
 }
 
 /// The SF Symbol for a server icon name.

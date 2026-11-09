@@ -166,3 +166,44 @@ final class OrderedByIDsDuplicateTests: XCTestCase {
         XCTAssertEqual(ordered.map(\.0), ["a", "b"])
     }
 }
+
+final class PlaySpotTests: XCTestCase {
+
+    private let trailer = ItemAction(id: "watch-trailer", label: "Watch trailer", icon: "trailer", kind: "play-queue")
+    private let extras = ItemAction(id: "extras", label: "Extras", icon: nil, kind: "play-queue")
+
+    func test_play_spot_playable_is_play() {
+        XCTAssertEqual(playSpot(isPlayable: true, hasWatchTrailer: true), .play)
+        XCTAssertEqual(playSpot(isPlayable: true, hasWatchTrailer: false), .play)
+    }
+
+    func test_play_spot_virtual_with_trailer_action_is_watch_trailer() {
+        XCTAssertEqual(playSpot(isPlayable: false, hasWatchTrailer: true), .watchTrailer)
+    }
+
+    func test_play_spot_virtual_without_is_not_in_library() {
+        XCTAssertEqual(playSpot(isPlayable: false, hasWatchTrailer: false), .notInLibrary)
+    }
+
+    func test_action_row_omits_watch_trailer_when_in_play_spot() {
+        let plan = actionButtons(actions: [trailer, extras], hasStockTrailers: true, watchTrailerInPlaySpot: true)
+        XCTAssertEqual(plan.buttons.map(\.id), ["extras"])
+        // The play spot's Watch trailer still stands in for the stock Trailers button: one trailer entry on the page.
+        XCTAssertFalse(plan.showStockTrailers)
+
+        let inRow = actionButtons(actions: [trailer, extras], hasStockTrailers: true)
+        XCTAssertEqual(inRow.buttons.map(\.id), ["watch-trailer", "extras"])
+    }
+
+    func testWatchTrailerButtonIsThePlayQueueAction() {
+        XCTAssertEqual(
+            watchTrailerButton(actions: [extras, trailer]),
+            ItemActionButton(id: "watch-trailer", label: "Watch trailer", systemImage: "film")
+        )
+        XCTAssertNil(watchTrailerButton(actions: [extras]))
+        XCTAssertNil(watchTrailerButton(actions: []))
+
+        let odd = ItemAction(id: "watch-trailer", label: "Watch trailer", icon: "trailer", kind: "open-web")
+        XCTAssertNil(watchTrailerButton(actions: [odd]))
+    }
+}

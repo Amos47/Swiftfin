@@ -27,6 +27,30 @@ final class ItemContentGroupProvider: ViewModel, ContentGroupProvider {
     private(set) var serverActions: ServerItemActions?
     private var serverActionsTask: Task<Void, Never>?
 
+    /// Personal fork: the server's answer for this item, or nil while it's still coming.
+    var currentServerActions: ServerItemActions? {
+        guard let serverActions, serverActions.itemID == item.id else { return nil }
+        return serverActions
+    }
+
+    /// Personal fork: whether the item itself can be played. A virtual film (or missing episode) can't; a series
+    /// counts as playable, since its Play button plays an episode.
+    var isPlayableHere: Bool {
+        !item.isMissing
+    }
+
+    /// Personal fork: the Watch trailer action when it takes the Play spot, else nil.
+    var playSpotAction: ItemActionButton? {
+        guard !isPlayableHere else { return nil }
+        return watchTrailerButton(actions: currentServerActions?.actions ?? [])
+    }
+
+    /// Personal fork: what the big Play spot shows. A virtual film shows Not in your library until the server's
+    /// actions arrive, then swaps once to Watch trailer when the server offers it.
+    var playSpot: PlaySpot {
+        HomeRowsCore.playSpot(isPlayable: isPlayableHere, hasWatchTrailer: playSpotAction != nil)
+    }
+
     let id: String
 
     /// Personal fork: the season to show first on the iPhone series page (seasons open their series there).
