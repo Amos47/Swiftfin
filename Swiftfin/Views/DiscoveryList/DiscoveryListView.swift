@@ -59,6 +59,10 @@ final class DiscoveryListViewModel: ObservableObject {
 
 struct DiscoveryListView: View {
 
+    // The page's content groups (ContentGroupVStack and the series-page parts) need a focus
+    // coordinator in the environment, as ItemView and ContentGroupView provide.
+    @StateObject
+    private var focusCoordinator = FocusCoordinator()
     @StateObject
     private var viewModel: DiscoveryListViewModel
 
@@ -80,6 +84,7 @@ struct DiscoveryListView: View {
             }
         }
         .animation(.linear(duration: 0.2), value: viewModel.page?.id)
+        .environmentObject(focusCoordinator)
         .navigationTitle(viewModel.page?.title ?? title)
         .toolbarTitleDisplayMode(.inline)
         .refreshable {
