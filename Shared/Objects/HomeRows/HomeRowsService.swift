@@ -19,6 +19,7 @@ enum HomeRowsService {
     private static var apis: [String: HomeRowsAPI] = [:]
     private static var editors: [ObjectIdentifier: HomeRowsEditor] = [:]
     private static var itemActionAPIs: [String: ItemActionsAPI] = [:]
+    private static var discoveryListAPIs: [String: DiscoveryListAPI] = [:]
 
     /// One rows editor per API, so leaving the editor by any route (tvOS Menu, a tab switch) keeps unsaved edits
     /// for when it's opened again, instead of throwing them away with the screen.
@@ -41,6 +42,18 @@ enum HomeRowsService {
 
         let api = ItemActionsAPI(transport: JellyfinHomeRowsTransport(configuration: session.client.configuration))
         itemActionAPIs[key] = api
+        return api
+    }
+
+    /// The discovery list pages client, on the same transport.
+    static func discoveryLists(for session: UserSession) -> DiscoveryListAPI {
+        let key = key(for: session)
+        if let api = discoveryListAPIs[key] {
+            return api
+        }
+
+        let api = DiscoveryListAPI(transport: JellyfinHomeRowsTransport(configuration: session.client.configuration))
+        discoveryListAPIs[key] = api
         return api
     }
 

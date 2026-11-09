@@ -38,62 +38,82 @@ public struct ItemActionsAPI: Sendable {
     /// The item's actions, in the server's order. Empty on a 404 (a stock server, or an item the user can't see) and on
     /// any other failure, so a page never shows an error for them.
     public func actions(itemID: String) async -> [ItemAction] {
-        guard let response = try? await transport.send(method: "GET", path: "Items/\(itemID)/Actions", query: [:], body: nil),
-              (200 ..< 300).contains(response.status),
-              let entries = (try? JSONValue.parse(response.body))?.array
-        else { return [] }
-
-        return entries.compactMap { entry in
-            guard let object = entry.object,
-                  let id = object["Id"]?.string,
-                  let kind = object["Kind"]?.string
-            else { return nil }
-            return ItemAction(id: id, label: object["Label"]?.string ?? id, icon: object["Icon"]?.string, kind: kind)
-        }
+        await fetchActions(transport: transport, path: "Items/\(itemID)/Actions")
     }
 
-    /// The items to play, in order, for a `play-queue` action. `ItemIds` gives the order; the newer `Items` field adds a
-    /// title and subtitle per id. An older server sends only `ItemIds`, so the entries have no titles; a response with
-    /// only `Items` uses its order.
-    public func queue(itemID: String, actionID: String) async throws -> [ItemActionQueueEntry] {
-        let response = try await transport.send(method: "GET", path: "Items/\(itemID)/Actions/\(actionID)/Queue", query: [:], body: nil)
-        guard (200 ..< 300).contains(response.status) else { throw HomeRowsError.status(response.status) }
-        guard let object = try JSONValue.parse(response.body).object else { throw HomeRowsError.invalidResponse }
-
-        let items: [ItemActionQueueEntry] = (object["Items"]?.array ?? []).compactMap { value in
-            guard let entry = value.object, let id = entry["Id"]?.string else { return nil }
-            return ItemActionQueueEntry(id: id, title: nonEmpty(entry["Title"]?.string), subtitle: nonEmpty(entry["Subtitle"]?.string))
-        }
-
-        guard let ids = object["ItemIds"]?.array?.compactMap(\.string) else {
-            guard object["Items"]?.array != nil else { throw HomeRowsError.invalidResponse }
-            return items
-        }
-
-        var byID: [String: ItemActionQueueEntry] = [:]
-        for item in items where byID[item.id] == nil {
-            byID[item.id] = item
-        }
-        return ids.map { byID[$0] ?? ItemActionQueueEntry(id: $0, title: nil, subtitle: nil) }
+    /// The items to play, in order, for a `play-queue` action (see `fetchQueue`). With `listID` (a film opened from a list page), the
+    /// server starts at the film and continues through that list;
+    /// a server that doesn't know the parameter ignores it.
+    public func queue(itemID: String, actionID: String, listID: String? = nil) async throws -> [ItemActionQueueEntry] {
+        let query = listID.map { ["listId": $0] } ?? [:]
+        return try await fetchQueue(transport: transport, path: "Items/\(itemID)/Actions/\(actionID)/Queue", query: query)
     }
 }
 
-private func nonEmpty(_ string: String?) -> String? {
+/// The actions at `path`, in the server's order. Empty on any failure, so a page never shows an error for them.
+func fetchActions(transport: HomeRowsTransport, path: String) async -> [ItemAction] {
+    guard let response = try? await transport.send(method: "GET", path: path, query: [:], body: nil),
+          (200 ..< 300).contains(response.status),
+          let entries = (try? JSONValue.parse(response.body))?.array
+    else { return [] }
+
+    return entries.compactMap { entry in
+        guard let object = entry.object,
+              let id = object["Id"]?.string,
+              let kind = object["Kind"]?.string
+        else { return nil }
+        return ItemAction(id: id, label: object["Label"]?.string ?? id, icon: object["Icon"]?.string, kind: kind)
+    }
+}
+
+/// The queue at `path`. `ItemIds` gives the order; `Items` adds a title, subtitle and film id per id. An older server
+/// sends only `ItemIds`; a response with only `Items` uses its order.
+func fetchQueue(transport: HomeRowsTransport, path: String, query: [String: String] = [:]) async throws -> [ItemActionQueueEntry] {
+    let response = try await transport.send(method: "GET", path: path, query: query, body: nil)
+    guard (200 ..< 300).contains(response.status) else { throw HomeRowsError.status(response.status) }
+    guard let object = try JSONValue.parse(response.body).object else { throw HomeRowsError.invalidResponse }
+
+    let items: [ItemActionQueueEntry] = (object["Items"]?.array ?? []).compactMap { value in
+        guard let entry = value.object, let id = entry["Id"]?.string else { return nil }
+        return ItemActionQueueEntry(
+            id: id,
+            title: nonEmpty(entry["Title"]?.string),
+            subtitle: nonEmpty(entry["Subtitle"]?.string),
+            filmID: nonEmpty(entry["FilmId"]?.string)
+        )
+    }
+
+    guard let ids = object["ItemIds"]?.array?.compactMap(\.string) else {
+        guard object["Items"]?.array != nil else { throw HomeRowsError.invalidResponse }
+        return items
+    }
+
+    var byID: [String: ItemActionQueueEntry] = [:]
+    for item in items where byID[item.id] == nil {
+        byID[item.id] = item
+    }
+    return ids.map { byID[$0] ?? ItemActionQueueEntry(id: $0, title: nil, subtitle: nil) }
+}
+
+func nonEmpty(_ string: String?) -> String? {
     guard let string, !string.isEmpty else { return nil }
     return string
 }
 
-/// One item of a server queue, with the title and subtitle the player shows for it when the server names it.
+/// One item of a server queue, with the title and subtitle the player shows for it when the server names it, and the
+/// film it belongs to (`FilmId`: the owned film if there is one, else the discovery copy; nil on an older server).
 public struct ItemActionQueueEntry: Equatable, Sendable {
 
     public let id: String
     public let title: String?
     public let subtitle: String?
+    public let filmID: String?
 
-    public init(id: String, title: String?, subtitle: String?) {
+    public init(id: String, title: String?, subtitle: String?, filmID: String? = nil) {
         self.id = id
         self.title = title
         self.subtitle = subtitle
+        self.filmID = filmID
     }
 }
 
@@ -151,6 +171,8 @@ public enum ItemActionKind {
 
 public enum ItemActionID {
     public static let watchTrailer = "watch-trailer"
+    /// A list page's Watch trailers (the whole list).
+    public static let watchTrailers = "watch-trailers"
 }
 
 /// A button for one server action.

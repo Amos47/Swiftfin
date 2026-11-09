@@ -22,18 +22,60 @@ struct ServerItemActions: Equatable {
 
 enum ItemActionPlayback {
 
-    /// The player's provider and queue for a `play-queue` action: the server's queue ids, fetched as items in one
-    /// request and kept in the server's order, leaving out ids the fetch didn't return (deleted) and items that can't
-    /// play (`playableQueue`). Each item keeps the server's title for it; on an older server, trailers whose parent is
-    /// `item` (the film whose page this is) fall back to its name. Throws when the queue fails or nothing in it can play.
+    /// The player's provider and queue for a `play-queue` action on an item page. With `listID` (a film opened from a
+    /// list page) the server continues through that list. See `playback(entries:…)`.
     @MainActor
     static func playback(
         item: BaseItemDto,
         action: ItemActionButton,
+        listID: String? = nil,
         session: UserSession
     ) async throws -> (provider: MediaPlayerItemProvider, queue: ItemListMediaPlayerQueue) {
         guard let itemID = item.id else { throw ErrorMessage(L10n.unknownError) }
-        let entries = try await HomeRowsService.itemActions(for: session).queue(itemID: itemID, actionID: action.id)
+        let entries = try await HomeRowsService.itemActions(for: session).queue(itemID: itemID, actionID: action.id, listID: listID)
+        let isTrailer = action.id == ItemActionID.watchTrailer
+        let fallback = isTrailer
+            ? trailerFallbackTitle(filmTitle: item.name, year: item.productionYear, trailerLabel: L10n.trailer)
+            : nil
+        return try await playback(
+            entries: entries,
+            title: isTrailer ? L10n.trailers : action.label,
+            film: (id: itemID, fallback: fallback),
+            listID: listID,
+            session: session
+        )
+    }
+
+    /// The player's provider and queue for one of a list page's `play-queue` actions (Watch trailers): the whole list.
+    @MainActor
+    static func playback(
+        listID: String,
+        action: ItemActionButton,
+        session: UserSession
+    ) async throws -> (provider: MediaPlayerItemProvider, queue: ItemListMediaPlayerQueue) {
+        let entries = try await HomeRowsService.discoveryLists(for: session).queue(listID: listID, actionID: action.id)
+        return try await playback(
+            entries: entries,
+            title: action.id == ItemActionID.watchTrailers ? L10n.trailers : action.label,
+            film: nil,
+            listID: listID,
+            session: session
+        )
+    }
+
+    /// The server's queue ids, fetched as items in one request and kept in the server's order, leaving out ids the
+    /// fetch didn't return (deleted) and items that can't play (`playableQueue`). Each item keeps the server's title
+    /// for it; on an older server, trailers whose parent is `film` (the film whose page this is) fall back to its
+    /// title. The queue remembers the film it started from (none for a list) and the list, for closing the player.
+    /// Throws when nothing in it can play.
+    @MainActor
+    private static func playback(
+        entries: [ItemActionQueueEntry],
+        title: String,
+        film: (id: String, fallback: QueueItemTitle?)?,
+        listID: String?,
+        session: UserSession
+    ) async throws -> (provider: MediaPlayerItemProvider, queue: ItemListMediaPlayerQueue) {
         let ids = entries.map(\.id)
         guard ids.isNotEmpty else { throw ErrorMessage(L10n.unknownError) }
 
@@ -50,10 +92,6 @@ enum ItemActionPlayback {
 
         guard let first = items.first else { throw ErrorMessage(L10n.unknownError) }
 
-        let isTrailer = action.id == ItemActionID.watchTrailer
-        let fallback = isTrailer
-            ? trailerFallbackTitle(filmTitle: item.name, year: item.productionYear, trailerLabel: L10n.trailer)
-            : nil
         // The fallback names only trailers of this film; any other item keeps its own title.
         var parentIDs: [String: String] = [:]
         for queued in items {
@@ -61,10 +99,15 @@ enum ItemActionPlayback {
                 parentIDs[id] = parentID
             }
         }
-        let titles = queueItemTitles(entries: entries, parentIDs: parentIDs, filmID: itemID, fallback: fallback)
+        let titles = queueItemTitles(entries: entries, parentIDs: parentIDs, filmID: film?.id, fallback: film?.fallback)
 
-        let title = isTrailer ? L10n.trailers : action.label
-        let queue = ItemListMediaPlayerQueue(items: items, titles: titles, displayTitle: title)
+        let queue = ItemListMediaPlayerQueue(
+            items: items,
+            titles: titles,
+            displayTitle: title,
+            entries: entries,
+            origin: .init(filmID: film?.id, listID: listID)
+        )
         return (queue.provider(for: first), queue)
     }
 }
@@ -88,13 +131,36 @@ final class ItemActionRunner: ObservableObject {
         runningActionID != nil
     }
 
+    /// Runs an item page's action. `listID` is the list page the film was opened from, if any.
     func run(
         _ action: ItemActionButton,
         item: BaseItemDto,
+        listID: String? = nil,
         route: @escaping @MainActor (MediaPlayerItemProvider, ItemListMediaPlayerQueue) -> Void
     ) {
+        guard item.id != nil else { return }
+        start(action, route: route) { session in
+            try await ItemActionPlayback.playback(item: item, action: action, listID: listID, session: session)
+        }
+    }
+
+    /// Runs one of a list page's actions (Watch trailers).
+    func run(
+        _ action: ItemActionButton,
+        listID: String,
+        route: @escaping @MainActor (MediaPlayerItemProvider, ItemListMediaPlayerQueue) -> Void
+    ) {
+        start(action, route: route) { session in
+            try await ItemActionPlayback.playback(listID: listID, action: action, session: session)
+        }
+    }
+
+    private func start(
+        _ action: ItemActionButton,
+        route: @escaping @MainActor (MediaPlayerItemProvider, ItemListMediaPlayerQueue) -> Void,
+        playback: @escaping @MainActor (UserSession) async throws -> (provider: MediaPlayerItemProvider, queue: ItemListMediaPlayerQueue)
+    ) {
         guard runningActionID == nil,
-              item.id != nil,
               let session = Container.shared.currentUserSession()
         else { return }
 
@@ -109,13 +175,14 @@ final class ItemActionRunner: ObservableObject {
                 }
             }
             do {
-                let playback = try await ItemActionPlayback.playback(item: item, action: action, session: session)
+                let playback = try await playback(session)
                 guard !Task.isCancelled else { return }
                 route(playback.provider, playback.queue)
             } catch {
                 guard !Task.isCancelled else { return }
                 logger.error("Unable to play item action \(action.id): \(error.localizedDescription)")
-                self.error = ErrorMessage(action.id == ItemActionID.watchTrailer ? L10n.unableToOpenTrailer : L10n.unknownError)
+                let isTrailer = action.id == ItemActionID.watchTrailer || action.id == ItemActionID.watchTrailers
+                self.error = ErrorMessage(isTrailer ? L10n.unableToOpenTrailer : L10n.unknownError)
             }
         }
     }

@@ -27,11 +27,25 @@ protocol MediaPlayerQueue: ObservableObject, MediaPlayerObserver, MediaPlayerSup
     /// Personal fork: the player's title for `item` when the queue knows a better one (a trailer queue names the
     /// film). Nil keeps the player's own title.
     func displayTitle(for item: BaseItemDto) -> QueueItemTitle?
+
+    /// Personal fork: the film page to open when the player closes on `item` (a trailer queue that moved on to another
+    /// film). Nil keeps the usual close.
+    func closeTarget(for item: BaseItemDto) -> QueueCloseTarget?
+}
+
+/// Personal fork: the film page closing the player opens, and the list page it came from (scrolled to that film).
+struct QueueCloseTarget: Equatable {
+    let filmID: String
+    let listID: String?
 }
 
 extension MediaPlayerQueue {
 
     func displayTitle(for item: BaseItemDto) -> QueueItemTitle? {
+        nil
+    }
+
+    func closeTarget(for item: BaseItemDto) -> QueueCloseTarget? {
         nil
     }
 
@@ -73,6 +87,10 @@ class AnyMediaPlayerQueue: MediaPlayerQueue {
 
     func displayTitle(for item: BaseItemDto) -> QueueItemTitle? {
         wrapped.displayTitle(for: item)
+    }
+
+    func closeTarget(for item: BaseItemDto) -> QueueCloseTarget? {
+        wrapped.closeTarget(for: item)
     }
 
     weak var manager: MediaPlayerManager? {

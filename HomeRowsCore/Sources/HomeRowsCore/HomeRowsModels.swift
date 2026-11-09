@@ -141,17 +141,35 @@ public struct HomeRowPresentation: Codable, Hashable, Sendable {
     public var cardShape: String
     public var preferredImageType: String?
     public var fallbackImageType: String?
+    /// Personal fork: the discovery list whose page the row's title and See all open. Nil on an older server, or for a
+    /// row that isn't a list (it keeps its own See all).
+    public var pageListID: String?
 
-    public init(cardShape: String, preferredImageType: String? = nil, fallbackImageType: String? = nil) {
+    public init(
+        cardShape: String,
+        preferredImageType: String? = nil,
+        fallbackImageType: String? = nil,
+        pageListID: String? = nil
+    ) {
         self.cardShape = cardShape
         self.preferredImageType = preferredImageType
         self.fallbackImageType = fallbackImageType
+        self.pageListID = pageListID
     }
 
     enum CodingKeys: String, CodingKey {
         case cardShape = "CardShape"
         case preferredImageType = "PreferredImageType"
         case fallbackImageType = "FallbackImageType"
+        case pageListID = "PageListId"
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        cardShape = try container.decode(String.self, forKey: .cardShape)
+        preferredImageType = try container.decodeIfPresent(String.self, forKey: .preferredImageType)
+        fallbackImageType = try container.decodeIfPresent(String.self, forKey: .fallbackImageType)
+        pageListID = try nonEmpty(container.decodeIfPresent(String.self, forKey: .pageListID))
     }
 }
 

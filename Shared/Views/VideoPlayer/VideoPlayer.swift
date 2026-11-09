@@ -133,7 +133,9 @@ struct VideoPlayer: View {
         .onReceive(manager.$state) { newState in
             #if os(iOS)
             if newState == .stopped {
-                showSeriesAfterClosing()
+                if !showFilmAfterClosing() {
+                    showSeriesAfterClosing()
+                }
                 PlaybackEngine.vlcFallbackItemIDs.removeAll()
             }
             #endif
@@ -159,6 +161,25 @@ struct VideoPlayer: View {
     }
 
     #if os(iOS)
+    /// Personal fork: closing a trailer queue that moved on to another film lands on that film's page, on top of where
+    /// the queue started; a list page underneath scrolls to the film. False when the queue names no other film (an
+    /// older server, an episode), so the usual close applies.
+    private func showFilmAfterClosing() -> Bool {
+        guard let target = manager.queue?.closeTarget(for: manager.item),
+              let presenter = router.router.navigationCoordinator?.presenter
+        else { return false }
+
+        if let listID = target.listID {
+            DiscoveryListFocus.shared.focus(filmID: target.filmID, listID: listID)
+        }
+
+        let filmRoute = NavigationRoute.item(id: target.filmID, discoveryListID: target.listID)
+        if presenter.path.last?.id != filmRoute.id {
+            presenter.push(filmRoute)
+        }
+        return true
+    }
+
     /// Personal fork: closing an episode lands on its series page, unless that's where playback started.
     private func showSeriesAfterClosing() {
         let item = manager.item

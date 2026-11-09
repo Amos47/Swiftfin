@@ -14,9 +14,16 @@ import SwiftUI
 
 /// Personal fork: a queue over a fixed list of items, played in order (the server's Watch trailer queue). Next and
 /// previous step through the list (`listQueueNeighbours`); every item plays from its start. `titles` holds the player's
-/// title per item id (the film a trailer is for).
+/// title per item id (the film a trailer is for); `entries` and `origin` say which film page closing the player opens.
 @MainActor
 final class ItemListMediaPlayerQueue: ObservableObject, MediaPlayerQueue {
+
+    /// Where the queue was started: the film page (`filmID`) or a list page (`filmID` nil), and the list it runs
+    /// through, if any.
+    struct Origin {
+        let filmID: String?
+        let listID: String?
+    }
 
     weak var manager: MediaPlayerManager? {
         didSet {
@@ -35,6 +42,8 @@ final class ItemListMediaPlayerQueue: ObservableObject, MediaPlayerQueue {
     let id: String = "ItemListMediaPlayerQueue"
     let items: [BaseItemDto]
     let titles: [String: QueueItemTitle]
+    let origin: Origin
+    private let entries: [String: ItemActionQueueEntry]
 
     @Published
     var nextItem: MediaPlayerItemProvider? = nil
@@ -52,7 +61,13 @@ final class ItemListMediaPlayerQueue: ObservableObject, MediaPlayerQueue {
 
     private var cancellables: Set<AnyCancellable> = []
 
-    init(items: [BaseItemDto], titles: [String: QueueItemTitle] = [:], displayTitle: String) {
+    init(
+        items: [BaseItemDto],
+        titles: [String: QueueItemTitle] = [:],
+        displayTitle: String,
+        entries: [ItemActionQueueEntry] = [],
+        origin: Origin = .init(filmID: nil, listID: nil)
+    ) {
         // The same item twice would make Next and the selected row ambiguous.
         var seen: Set<String> = []
         self.items = items.filter { item in
@@ -61,10 +76,22 @@ final class ItemListMediaPlayerQueue: ObservableObject, MediaPlayerQueue {
         }
         self.titles = titles
         self.displayTitle = displayTitle
+        self.origin = origin
+        var byID: [String: ItemActionQueueEntry] = [:]
+        for entry in entries where byID[entry.id] == nil {
+            byID[entry.id] = entry
+        }
+        self.entries = byID
     }
 
     func displayTitle(for item: BaseItemDto) -> QueueItemTitle? {
         item.id.flatMap { titles[$0] }
+    }
+
+    func closeTarget(for item: BaseItemDto) -> QueueCloseTarget? {
+        let entry = item.id.flatMap { entries[$0] }
+        return HomeRowsCore.closeTarget(startFilmID: origin.filmID, currentEntry: entry)
+            .map { QueueCloseTarget(filmID: $0, listID: origin.listID) }
     }
 
     var videoPlayerBody: some PlatformView {

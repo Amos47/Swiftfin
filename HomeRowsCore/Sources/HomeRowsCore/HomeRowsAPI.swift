@@ -117,7 +117,7 @@ public actor HomeRowsAPI {
     // MARK: - Requests
 
     /// Decodes items the way the Jellyfin SDK does, so dates parse.
-    private static let itemsDecoder: JSONDecoder = {
+    static let itemsDecoder: JSONDecoder = {
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .custom { decoder in
             let container = try decoder.singleValueContainer()

@@ -179,7 +179,7 @@ struct PlayButton: View {
     /// Personal fork: Watch trailer in the Play spot, for a film the user doesn't have. Same style as Play.
     private func watchTrailerSpot(_ action: ItemActionButton) -> some View {
         Button {
-            actionRunner.run(action, item: provider.item) { provider, queue in
+            actionRunner.run(action, item: provider.item, listID: provider.discoveryListID) { provider, queue in
                 router.route(to: .videoPlayer(provider: provider, queue: queue))
             }
         } label: {

@@ -59,6 +59,10 @@ final class ItemContentGroupProvider: ViewModel, ContentGroupProvider {
     /// Personal fork: the season to show first on the iPhone series page (seasons open their series there).
     var preferredSeasonID: String?
 
+    /// Personal fork: the discovery list page this film was opened from, so its Watch trailer continues through that
+    /// list.
+    var discoveryListID: String?
+
     var displayTitle: String {
         item.displayTitle
     }

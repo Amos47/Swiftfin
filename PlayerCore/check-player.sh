@@ -36,7 +36,7 @@ swiftlint lint --quiet --strict \
     Shared/Objects/MediaPlayerManager/MediaPlayerProxy/MediaPlayerProxy+AVPlayer.swift \
     Shared/Views/VideoPlayer/VideoPlayer+AppleEngine.swift \
     Swiftfin/Views/VideoPlayer/Components \
-    Swiftfin/Views/Components Swiftfin/Views/ItemView/Series \
+    Swiftfin/Views/Components Swiftfin/Views/ItemView/Series Swiftfin/Views/DiscoveryList \
     Shared/Objects/ItemPlaybackResolver.swift Shared/Objects/CardTapPlays.swift
 
 if [ -n "$(git status --porcelain)" ]; then

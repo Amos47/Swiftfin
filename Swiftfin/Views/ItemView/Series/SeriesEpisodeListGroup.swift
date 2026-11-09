@@ -324,6 +324,8 @@ struct SeriesEpisodeRow: View {
 
     let episode: BaseItemDto
     let isCurrent: Bool
+    /// What a tap does instead of playing (a list page's film row opens the film); its menu then offers Play.
+    var onSelect: (() -> Void)?
 
     private var title: String {
         if let number = episode.indexNumber {
@@ -333,7 +335,10 @@ struct SeriesEpisodeRow: View {
     }
 
     private var detail: String? {
-        let base = episode.progressLabel ?? episode.runTimeLabel
+        // A film row (list page) leads with its year.
+        let year = episode.type == .movie ? episode.productionYear.map(String.init) : nil
+        let parts = [year, episode.progressLabel ?? episode.runTimeLabel].compactMap(\.self)
+        let base = parts.isEmpty ? nil : parts.joined(separator: " · ")
 
         // Personal fork: when it was last watched, to find a rewatch on the series page.
         guard let lastPlayed = lastPlayedDateText(
@@ -375,7 +380,11 @@ struct SeriesEpisodeRow: View {
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
             Button {
-                episode.play(router: router)
+                if let onSelect {
+                    onSelect()
+                } else {
+                    episode.play(router: router)
+                }
             } label: {
                 HStack(alignment: .top, spacing: 12) {
                     thumbnail
@@ -407,7 +416,7 @@ struct SeriesEpisodeRow: View {
             .buttonStyle(.plain)
             .contextMenu {
                 episode.posterContextMenu
-                    .environment(\.cardTapPlays, true)
+                    .environment(\.cardTapPlays, onSelect == nil)
             }
 
             // Personal fork: download and "⋯" side by side.
@@ -418,7 +427,7 @@ struct SeriesEpisodeRow: View {
 
                 Menu {
                     episode.posterContextMenu
-                        .environment(\.cardTapPlays, true)
+                        .environment(\.cardTapPlays, onSelect == nil)
                 } label: {
                     Image(systemName: "ellipsis")
                         .font(.footnote.weight(.bold))

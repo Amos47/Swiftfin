@@ -149,8 +149,9 @@ extension NavigationRoute {
         }
     }
 
+    /// Personal fork: `discoveryListID` is the list page a film was opened from.
     @MainActor
-    static func item(item: BaseItemDto) -> NavigationRoute {
+    static func item(item: BaseItemDto, discoveryListID: String? = nil) -> NavigationRoute {
         #if os(iOS)
         // Personal fork: iPhone has no season page; a season opens its series page with that season selected.
         if item.type == .season, let seriesID = item.seriesID {
@@ -167,6 +168,7 @@ extension NavigationRoute {
         #endif
 
         let provider = ItemContentGroupProvider(item: item)
+        provider.discoveryListID = discoveryListID
 
         return NavigationRoute(
             id: "item-\(item.id ?? "Unknown")",
@@ -177,8 +179,9 @@ extension NavigationRoute {
     }
 
     @MainActor
-    static func item(id: String) -> NavigationRoute {
+    static func item(id: String, discoveryListID: String? = nil) -> NavigationRoute {
         let provider = ItemContentGroupProvider(id: id)
+        provider.discoveryListID = discoveryListID
 
         return NavigationRoute(
             id: "item-\(id)",
@@ -189,6 +192,14 @@ extension NavigationRoute {
     }
 
     #if os(iOS)
+    /// Personal fork: a discovery list's series-style page. `title` shows until the page loads.
+    @MainActor
+    static func discoveryList(listID: String, title: String) -> NavigationRoute {
+        NavigationRoute(id: "discovery-list-\(listID)") {
+            DiscoveryListView(listID: listID, title: title)
+        }
+    }
+
     static func itemEditor(viewModel: ItemEditorViewModel) -> NavigationRoute {
         NavigationRoute(
             id: "itemEditor",
