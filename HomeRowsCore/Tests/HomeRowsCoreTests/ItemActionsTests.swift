@@ -195,6 +195,28 @@ final class PlaySpotTests: XCTestCase {
         XCTAssertEqual(inRow.buttons.map(\.id), ["watch-trailer", "extras"])
     }
 
+    func testPlaySpotActionPlayableIsNil() {
+        XCTAssertNil(playSpotAction(isPlayable: true, hasPlaybackProvider: true, actions: [trailer]))
+        XCTAssertNil(playSpotAction(isPlayable: true, hasPlaybackProvider: false, actions: [trailer]))
+    }
+
+    /// A season with no folder is reported Virtual but is owned: its playback provider makes it playable.
+    func testPlaySpotActionNotPlayableButWithProviderIsNil() {
+        XCTAssertNil(playSpotAction(isPlayable: false, hasPlaybackProvider: true, actions: [trailer]))
+    }
+
+    func testPlaySpotActionVirtualWithWatchTrailerIsTheAction() {
+        XCTAssertEqual(
+            playSpotAction(isPlayable: false, hasPlaybackProvider: false, actions: [extras, trailer]),
+            ItemActionButton(id: "watch-trailer", label: "Watch trailer", systemImage: "film")
+        )
+    }
+
+    func testPlaySpotActionVirtualWithoutWatchTrailerIsNil() {
+        XCTAssertNil(playSpotAction(isPlayable: false, hasPlaybackProvider: false, actions: [extras]))
+        XCTAssertNil(playSpotAction(isPlayable: false, hasPlaybackProvider: false, actions: []))
+    }
+
     func testWatchTrailerButtonIsThePlayQueueAction() {
         XCTAssertEqual(
             watchTrailerButton(actions: [extras, trailer]),

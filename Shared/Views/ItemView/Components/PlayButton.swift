@@ -129,11 +129,27 @@ struct PlayButton: View {
         }
     }
 
+    /// Personal fork: the big button's label in the accent style, shared by Play and the Watch trailer spot.
+    private func accentLabel(@ViewBuilder content: () -> some View) -> some View {
+        HStack(content: content)
+            .font(.callout)
+            .fontWeight(.semibold)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .backport
+            .glassEffect(
+                .regular.selection(
+                    tint: accentColor,
+                    foregroundColor: accentColor.overlayColor
+                ),
+                in: .capsule
+            )
+    }
+
     private var playButton: some View {
         Button {
             play()
         } label: {
-            HStack {
+            accentLabel {
                 Image(systemName: "play.fill")
 
                 VStack(spacing: 2) {
@@ -146,17 +162,6 @@ struct PlayButton: View {
                     }
                 }
             }
-            .font(.callout)
-            .fontWeight(.semibold)
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .backport
-            .glassEffect(
-                .regular.selection(
-                    tint: accentColor,
-                    foregroundColor: accentColor.overlayColor
-                ),
-                in: .capsule
-            )
         }
         .buttonBorderShape(.capsule)
         .buttonStyle(BasicHoverButtonStyle())
@@ -172,28 +177,17 @@ struct PlayButton: View {
     }
 
     /// Personal fork: Watch trailer in the Play spot, for a film the user doesn't have. Same style as Play.
-    private func watchTrailerButton(_ action: ItemActionButton) -> some View {
+    private func watchTrailerSpot(_ action: ItemActionButton) -> some View {
         Button {
             actionRunner.run(action, itemID: provider.item.id) { provider, queue in
                 router.route(to: .videoPlayer(provider: provider, queue: queue))
             }
         } label: {
-            HStack {
+            accentLabel {
                 Image(systemName: action.systemImage)
 
                 Text(action.label)
             }
-            .font(.callout)
-            .fontWeight(.semibold)
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .backport
-            .glassEffect(
-                .regular.selection(
-                    tint: accentColor,
-                    foregroundColor: accentColor.overlayColor
-                ),
-                in: .capsule
-            )
         }
         .buttonBorderShape(.capsule)
         .buttonStyle(BasicHoverButtonStyle())
@@ -230,7 +224,7 @@ struct PlayButton: View {
                 versionMenu
             case .watchTrailer:
                 if let action = provider.playSpotAction {
-                    watchTrailerButton(action)
+                    watchTrailerSpot(action)
                 }
             case .notInLibrary:
                 notInLibraryButton

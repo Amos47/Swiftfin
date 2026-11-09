@@ -33,16 +33,19 @@ final class ItemContentGroupProvider: ViewModel, ContentGroupProvider {
         return serverActions
     }
 
-    /// Personal fork: whether the item itself can be played. A virtual film (or missing episode) can't; a series
-    /// counts as playable, since its Play button plays an episode.
+    /// Personal fork: whether the item can be played. A virtual film (or missing episode) can't; a series counts, since
+    /// its Play button plays an episode; a season with no folder is reported Virtual but has a playback provider.
     var isPlayableHere: Bool {
-        !item.isMissing
+        !item.isMissing || mediaPlayerItemProvider != nil
     }
 
-    /// Personal fork: the Watch trailer action when it takes the Play spot, else nil.
+    /// Personal fork: the Watch trailer action when it takes the Play spot, else nil (the row shows it then).
     var playSpotAction: ItemActionButton? {
-        guard !isPlayableHere else { return nil }
-        return watchTrailerButton(actions: currentServerActions?.actions ?? [])
+        HomeRowsCore.playSpotAction(
+            isPlayable: !item.isMissing,
+            hasPlaybackProvider: mediaPlayerItemProvider != nil,
+            actions: currentServerActions?.actions ?? []
+        )
     }
 
     /// Personal fork: what the big Play spot shows. A virtual film shows Not in your library until the server's

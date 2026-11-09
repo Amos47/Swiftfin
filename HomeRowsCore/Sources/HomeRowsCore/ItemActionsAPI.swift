@@ -109,6 +109,14 @@ public func watchTrailerButton(actions: [ItemAction]) -> ItemActionButton? {
         .map(ItemActionButton.init)
 }
 
+/// The Watch trailer action when it takes an item page's Play spot: only for an item that isn't playable and has no
+/// playback provider (a season with no folder is reported Virtual but is owned and plays), and only when the server
+/// offers `watch-trailer`. Otherwise nil, and Watch trailer (if any) stays in the action row.
+public func playSpotAction(isPlayable: Bool, hasPlaybackProvider: Bool, actions: [ItemAction]) -> ItemActionButton? {
+    guard !isPlayable, !hasPlaybackProvider else { return nil }
+    return watchTrailerButton(actions: actions)
+}
+
 extension ItemActionButton {
     init(_ action: ItemAction) {
         self.init(id: action.id, label: action.label, systemImage: actionSystemImage(icon: action.icon))
