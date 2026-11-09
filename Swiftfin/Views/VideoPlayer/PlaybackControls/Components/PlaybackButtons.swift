@@ -100,6 +100,10 @@ extension VideoPlayer.PlaybackControls {
 
         var body: some View {
             HStack(spacing: 0) {
+                if let queue = manager.queue {
+                    QueueStepButton(queue: queue, direction: .previous)
+                }
+
                 if shouldShowJumpButtons {
                     jumpBackwardButton
                 }
@@ -110,10 +114,65 @@ extension VideoPlayer.PlaybackControls {
                 if shouldShowJumpButtons {
                     jumpForwardButton
                 }
+
+                if let queue = manager.queue {
+                    QueueStepButton(queue: queue, direction: .next)
+                }
             }
             .modifier(OverlayButtonStyleModifier(onPressed: onPressed))
             .padding(.horizontal, 50)
             .offset(y: centerOffsetBox.value / 2)
+        }
+    }
+}
+
+extension VideoPlayer.PlaybackControls.PlaybackButtons {
+
+    /// Personal fork: Previous or Next beside Play/Pause, as in Apple's player, for any queue (episodes, trailers).
+    /// Shown only when the queue has a target on that side; the space stays when it doesn't, so Play/Pause stays
+    /// centred. The target is built before switching, so a failure keeps the current item playing.
+    private struct QueueStepButton: View {
+
+        enum Direction {
+            case previous
+            case next
+        }
+
+        @EnvironmentObject
+        private var manager: MediaPlayerManager
+
+        @ObservedObject
+        var queue: AnyMediaPlayerQueue
+
+        let direction: Direction
+
+        private var target: MediaPlayerItemProvider? {
+            switch direction {
+            case .previous: queue.previousItem
+            case .next: queue.nextItem
+            }
+        }
+
+        var body: some View {
+            ZStack {
+                if let target {
+                    Button {
+                        manager.playQueueItem(target)
+                    } label: {
+                        Label(
+                            direction == .previous ? L10n.previousItem : L10n.nextItem,
+                            systemImage: direction == .previous ? "backward.end.fill" : "forward.end.fill"
+                        )
+                        .labelStyle(.iconOnly)
+                        .font(.system(size: 26, weight: .bold, design: .default))
+                        .contentShape(Rectangle())
+                        .padding(14)
+                    }
+                    .disabled(manager.isSwitchingItem)
+                    .transition(.opacity)
+                }
+            }
+            .frame(width: 64)
         }
     }
 }

@@ -6,6 +6,7 @@
 // Copyright (c) 2026 Jellyfin & Jellyfin Contributors
 //
 
+import HomeRowsCore
 import JellyfinAPI
 import SwiftUI
 
@@ -73,7 +74,7 @@ extension VideoPlayer.PlaybackControls {
                         .frame(width: Self.buttonSize, height: Self.buttonSize)
                 }
 
-                TitleView(item: manager.item)
+                TitleView(item: manager.item, queueTitle: manager.queue?.displayTitle(for: manager.item))
                     .frame(maxWidth: .infinity, alignment: .leading)
 
                 #if os(iOS)
@@ -111,8 +112,14 @@ extension VideoPlayer.PlaybackControls.Toolbar {
         private var subtitleContentSize: CGSize = .zero
 
         let item: BaseItemDto
+        /// Personal fork: the queue's title for the item (a trailer names its film), shown instead of the item's own.
+        var queueTitle: QueueItemTitle?
 
         private var _titleSubtitle: (title: String, subtitle: String?) {
+            if let queueTitle {
+                return (title: queueTitle.title, subtitle: queueTitle.subtitle)
+            }
+
             if item.type == .episode, let parentTitle = item.parentTitle {
                 return (title: parentTitle, subtitle: item.seasonEpisodeLabel)
             }

@@ -23,14 +23,18 @@ struct ServerItemActions: Equatable {
 enum ItemActionPlayback {
 
     /// The player's provider and queue for a `play-queue` action: the server's queue ids, fetched as items in one
-    /// request and kept in the server's order. Throws when the queue fails or is empty.
+    /// request and kept in the server's order, leaving out ids the fetch didn't return (deleted) and items that can't
+    /// play (`playableQueue`). Each item keeps the server's title for it; an older server's trailers fall back to
+    /// `item`'s name (the film whose page this is). Throws when the queue fails or nothing in it can play.
     @MainActor
     static func playback(
-        itemID: String,
+        item: BaseItemDto,
         action: ItemActionButton,
         session: UserSession
     ) async throws -> (provider: MediaPlayerItemProvider, queue: ItemListMediaPlayerQueue) {
-        let ids = try await HomeRowsService.itemActions(for: session).queue(itemID: itemID, actionID: action.id)
+        guard let itemID = item.id else { throw ErrorMessage(L10n.unknownError) }
+        let entries = try await HomeRowsService.itemActions(for: session).queue(itemID: itemID, actionID: action.id)
+        let ids = entries.map(\.id)
         guard ids.isNotEmpty else { throw ErrorMessage(L10n.unknownError) }
 
         var parameters = Paths.GetItemsParameters()
@@ -39,12 +43,24 @@ enum ItemActionPlayback {
         parameters.fields = .MinimumFields
         parameters.enableUserData = true
         let response = try await session.client.send(Paths.getItems(parameters: parameters))
-        let items = orderedByIDs(response.value.items ?? [], ids: ids) { $0.id }
+        // A trailer carries its film's premiere date, so a future date doesn't make it unplayable here.
+        let items = playableQueue(ids: ids, fetched: response.value.items ?? []) { item in
+            item.id.map { QueueCandidate(id: $0, isMissing: item.isMissing, isUnaired: false, hasMedia: item.queueCandidate.hasMedia) }
+        }
 
         guard let first = items.first else { throw ErrorMessage(L10n.unknownError) }
 
-        let title = action.id == ItemActionID.watchTrailer ? L10n.trailers : action.label
-        let queue = ItemListMediaPlayerQueue(items: items, displayTitle: title)
+        let isTrailer = action.id == ItemActionID.watchTrailer
+        let fallback = isTrailer
+            ? trailerFallbackTitle(filmTitle: item.name, year: item.productionYear, trailerLabel: L10n.trailer)
+            : nil
+        var titles: [String: QueueItemTitle] = [:]
+        for entry in entries {
+            titles[entry.id] = titles[entry.id] ?? queueItemTitle(entry: entry, fallback: fallback)
+        }
+
+        let title = isTrailer ? L10n.trailers : action.label
+        let queue = ItemListMediaPlayerQueue(items: items, titles: titles, displayTitle: title)
         return (queue.provider(for: first), queue)
     }
 }
@@ -70,11 +86,11 @@ final class ItemActionRunner: ObservableObject {
 
     func run(
         _ action: ItemActionButton,
-        itemID: String?,
+        item: BaseItemDto,
         route: @escaping @MainActor (MediaPlayerItemProvider, ItemListMediaPlayerQueue) -> Void
     ) {
         guard runningActionID == nil,
-              let itemID,
+              item.id != nil,
               let session = Container.shared.currentUserSession()
         else { return }
 
@@ -89,7 +105,7 @@ final class ItemActionRunner: ObservableObject {
                 }
             }
             do {
-                let playback = try await ItemActionPlayback.playback(itemID: itemID, action: action, session: session)
+                let playback = try await ItemActionPlayback.playback(item: item, action: action, session: session)
                 guard !Task.isCancelled else { return }
                 route(playback.provider, playback.queue)
             } catch {

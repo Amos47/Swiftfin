@@ -13,7 +13,8 @@ import JellyfinAPI
 import SwiftUI
 
 /// Personal fork: a queue over a fixed list of items, played in order (the server's Watch trailer queue). Next and
-/// previous step through the list (`listQueueNeighbours`); every item plays from its start.
+/// previous step through the list (`listQueueNeighbours`); every item plays from its start. `titles` holds the player's
+/// title per item id (the film a trailer is for).
 @MainActor
 final class ItemListMediaPlayerQueue: ObservableObject, MediaPlayerQueue {
 
@@ -33,6 +34,7 @@ final class ItemListMediaPlayerQueue: ObservableObject, MediaPlayerQueue {
     let displayTitle: String
     let id: String = "ItemListMediaPlayerQueue"
     let items: [BaseItemDto]
+    let titles: [String: QueueItemTitle]
 
     @Published
     var nextItem: MediaPlayerItemProvider? = nil
@@ -50,14 +52,19 @@ final class ItemListMediaPlayerQueue: ObservableObject, MediaPlayerQueue {
 
     private var cancellables: Set<AnyCancellable> = []
 
-    init(items: [BaseItemDto], displayTitle: String) {
+    init(items: [BaseItemDto], titles: [String: QueueItemTitle] = [:], displayTitle: String) {
         // The same item twice would make Next and the selected row ambiguous.
         var seen: Set<String> = []
         self.items = items.filter { item in
             guard let id = item.id else { return true }
             return seen.insert(id).inserted
         }
+        self.titles = titles
         self.displayTitle = displayTitle
+    }
+
+    func displayTitle(for item: BaseItemDto) -> QueueItemTitle? {
+        item.id.flatMap { titles[$0] }
     }
 
     var videoPlayerBody: some PlatformView {

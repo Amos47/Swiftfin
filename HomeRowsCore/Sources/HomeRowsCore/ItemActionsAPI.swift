@@ -52,13 +52,76 @@ public struct ItemActionsAPI: Sendable {
         }
     }
 
-    /// The item ids to play, in order, for a `play-queue` action.
-    public func queue(itemID: String, actionID: String) async throws -> [String] {
+    /// The items to play, in order, for a `play-queue` action. `ItemIds` gives the order; the newer `Items` field adds a
+    /// title and subtitle per id. An older server sends only `ItemIds`, so the entries have no titles; a response with
+    /// only `Items` uses its order.
+    public func queue(itemID: String, actionID: String) async throws -> [ItemActionQueueEntry] {
         let response = try await transport.send(method: "GET", path: "Items/\(itemID)/Actions/\(actionID)/Queue", query: [:], body: nil)
         guard (200 ..< 300).contains(response.status) else { throw HomeRowsError.status(response.status) }
-        guard let ids = try JSONValue.parse(response.body).object?["ItemIds"]?.array else { throw HomeRowsError.invalidResponse }
-        return ids.compactMap(\.string)
+        guard let object = try JSONValue.parse(response.body).object else { throw HomeRowsError.invalidResponse }
+
+        let items: [ItemActionQueueEntry] = (object["Items"]?.array ?? []).compactMap { value in
+            guard let entry = value.object, let id = entry["Id"]?.string else { return nil }
+            return ItemActionQueueEntry(id: id, title: nonEmpty(entry["Title"]?.string), subtitle: nonEmpty(entry["Subtitle"]?.string))
+        }
+
+        guard let ids = object["ItemIds"]?.array?.compactMap(\.string) else {
+            guard object["Items"]?.array != nil else { throw HomeRowsError.invalidResponse }
+            return items
+        }
+
+        var byID: [String: ItemActionQueueEntry] = [:]
+        for item in items where byID[item.id] == nil {
+            byID[item.id] = item
+        }
+        return ids.map { byID[$0] ?? ItemActionQueueEntry(id: $0, title: nil, subtitle: nil) }
     }
+}
+
+private func nonEmpty(_ string: String?) -> String? {
+    guard let string, !string.isEmpty else { return nil }
+    return string
+}
+
+/// One item of a server queue, with the title and subtitle the player shows for it when the server names it.
+public struct ItemActionQueueEntry: Equatable, Sendable {
+
+    public let id: String
+    public let title: String?
+    public let subtitle: String?
+
+    public init(id: String, title: String?, subtitle: String?) {
+        self.id = id
+        self.title = title
+        self.subtitle = subtitle
+    }
+}
+
+/// The player's top-left title (and the line under it) for a queue item.
+public struct QueueItemTitle: Equatable, Sendable {
+
+    public let title: String
+    public let subtitle: String?
+
+    public init(title: String, subtitle: String?) {
+        self.title = title
+        self.subtitle = subtitle
+    }
+}
+
+/// The server's title for `entry` (with its subtitle, if any); without one, `fallback`; nil means the player's own title.
+public func queueItemTitle(entry: ItemActionQueueEntry, fallback: QueueItemTitle?) -> QueueItemTitle? {
+    if let title = entry.title {
+        return QueueItemTitle(title: title, subtitle: entry.subtitle)
+    }
+    return fallback
+}
+
+/// For an older server, the trailer queue's title: the film the page is for, "Trailer · year" under it. Nil without a
+/// film title.
+public func trailerFallbackTitle(filmTitle: String?, year: Int?, trailerLabel: String) -> QueueItemTitle? {
+    guard let filmTitle = nonEmpty(filmTitle) else { return nil }
+    return QueueItemTitle(title: filmTitle, subtitle: year.map { "\(trailerLabel) · \($0)" } ?? trailerLabel)
 }
 
 // MARK: - Plan

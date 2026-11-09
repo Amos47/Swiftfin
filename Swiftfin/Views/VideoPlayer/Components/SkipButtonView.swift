@@ -150,7 +150,7 @@ extension VideoPlayer.PlaybackControls {
                 manager.proxy?.setSeconds(target)
             case .nextEpisode:
                 if let nextItem = manager.queue?.nextItem {
-                    manager.playNewItem(provider: nextItem)
+                    manager.playQueueItem(nextItem)
                 }
             }
         }

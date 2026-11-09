@@ -61,7 +61,50 @@ final class ItemActionsAPITests: XCTestCase {
         let ids = try await api(transport).queue(itemID: "abc", actionID: "watch-trailer")
 
         XCTAssertEqual(transport.calls.map(\.path), ["Items/abc/Actions/watch-trailer/Queue"])
-        XCTAssertEqual(ids, ["c", "a", "b"])
+        XCTAssertEqual(ids, ["c", "a", "b"].map { ItemActionQueueEntry(id: $0, title: nil, subtitle: nil) })
+    }
+
+    func testQueueCarriesTitlesFromItems() async throws {
+        let transport = FakeTransport { _, _ in (
+            200,
+            #"{"ItemIds":["c","a"],"Items":[{"Id":"c","Title":"Heat","Subtitle":"Trailer · 1995"},{"Id":"a","Title":"Alien"}]}"#
+        ) }
+        let entries = try await api(transport).queue(itemID: "abc", actionID: "watch-trailer")
+        XCTAssertEqual(entries, [
+            ItemActionQueueEntry(id: "c", title: "Heat", subtitle: "Trailer · 1995"),
+            ItemActionQueueEntry(id: "a", title: "Alien", subtitle: nil),
+        ])
+    }
+
+    func testQueueOrderIsItemIdsAndTitlesMatchById() async throws {
+        // Items in another order, an empty title, and an id with no entry.
+        let transport = FakeTransport { _, _ in (
+            200,
+            #"{"ItemIds":["a","b","c"],"Items":[{"Id":"c","Title":"Cop"},{"Id":"a","Title":"","Subtitle":"Trailer"}]}"#
+        ) }
+        let entries = try await api(transport).queue(itemID: "abc", actionID: "watch-trailer")
+        XCTAssertEqual(entries, [
+            ItemActionQueueEntry(id: "a", title: nil, subtitle: "Trailer"),
+            ItemActionQueueEntry(id: "b", title: nil, subtitle: nil),
+            ItemActionQueueEntry(id: "c", title: "Cop", subtitle: nil),
+        ])
+    }
+
+    func testQueueWithOnlyItemsUsesTheirOrder() async throws {
+        let transport = FakeTransport { _, _ in (200, #"{"Items":[{"Id":"b","Title":"B"},{"Title":"No id"},{"Id":"a"}]}"#) }
+        let entries = try await api(transport).queue(itemID: "abc", actionID: "watch-trailer")
+        XCTAssertEqual(entries.map(\.id), ["b", "a"])
+        XCTAssertEqual(entries.map(\.title), ["B", nil])
+    }
+
+    func testQueueWithNeitherFieldIsInvalid() async {
+        let transport = FakeTransport { _, _ in (200, #"{}"#) }
+        do {
+            _ = try await api(transport).queue(itemID: "abc", actionID: "watch-trailer")
+            XCTFail("expected a throw")
+        } catch {
+            XCTAssertEqual(error as? HomeRowsError, .invalidResponse)
+        }
     }
 
     func testQueueThrowsOnAFailedStatus() async {
@@ -227,5 +270,39 @@ final class PlaySpotTests: XCTestCase {
 
         let odd = ItemAction(id: "watch-trailer", label: "Watch trailer", icon: "trailer", kind: "open-web")
         XCTAssertNil(watchTrailerButton(actions: [odd]))
+    }
+}
+
+final class QueueItemTitleTests: XCTestCase {
+
+    private let fallback = QueueItemTitle(title: "Dune", subtitle: "Trailer · 2021")
+
+    func testServerTitleWins() {
+        let entry = ItemActionQueueEntry(id: "a", title: "Heat", subtitle: "Trailer · 1995")
+        XCTAssertEqual(queueItemTitle(entry: entry, fallback: fallback), QueueItemTitle(title: "Heat", subtitle: "Trailer · 1995"))
+    }
+
+    func testServerTitleWithoutSubtitleKeepsNoSubtitle() {
+        let entry = ItemActionQueueEntry(id: "a", title: "Heat", subtitle: nil)
+        XCTAssertEqual(queueItemTitle(entry: entry, fallback: fallback), QueueItemTitle(title: "Heat", subtitle: nil))
+    }
+
+    func testOlderServerUsesTheFallback() {
+        let entry = ItemActionQueueEntry(id: "a", title: nil, subtitle: nil)
+        XCTAssertEqual(queueItemTitle(entry: entry, fallback: fallback), fallback)
+        XCTAssertNil(queueItemTitle(entry: entry, fallback: nil))
+    }
+
+    func testTrailerFallbackTitle() {
+        XCTAssertEqual(
+            trailerFallbackTitle(filmTitle: "Dune", year: 2021, trailerLabel: "Trailer"),
+            QueueItemTitle(title: "Dune", subtitle: "Trailer · 2021")
+        )
+        XCTAssertEqual(
+            trailerFallbackTitle(filmTitle: "Dune", year: nil, trailerLabel: "Trailer"),
+            QueueItemTitle(title: "Dune", subtitle: "Trailer")
+        )
+        XCTAssertNil(trailerFallbackTitle(filmTitle: nil, year: 2021, trailerLabel: "Trailer"))
+        XCTAssertNil(trailerFallbackTitle(filmTitle: "", year: 2021, trailerLabel: "Trailer"))
     }
 }

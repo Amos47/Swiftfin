@@ -8,6 +8,7 @@
 
 import Combine
 import Foundation
+import JellyfinAPI
 import Logging
 import MediaPlayer
 import Nuke
@@ -121,7 +122,7 @@ class NowPlayableObserver: ViewModel, MediaPlayerObserver {
         itemImageCancellable = nil
         guard let newItem else { return }
 
-        setNowPlayingMetadata(newItem.baseItem.nowPlayableStaticMetadata())
+        setNowPlayingMetadata(staticMetadata(for: newItem.baseItem))
 
         itemImageCancellable = Task {
             let currentBaseItem = newItem.baseItem
@@ -129,7 +130,7 @@ class NowPlayableObserver: ViewModel, MediaPlayerObserver {
 
             await MainActor.run {
                 setNowPlayingMetadata(
-                    currentBaseItem.nowPlayableStaticMetadata(image)
+                    staticMetadata(for: currentBaseItem, image: image)
                 )
             }
         }
@@ -141,6 +142,22 @@ class NowPlayableObserver: ViewModel, MediaPlayerObserver {
                 position: manager?.seconds ?? .zero,
                 duration: manager?.item.runtime ?? .zero
             )
+        )
+    }
+
+    /// Personal fork: the item's Now Playing metadata, with the queue's title and subtitle when it has one (the
+    /// player's top-left title), so the lock screen names a trailer's film too.
+    private func staticMetadata(for item: BaseItemDto, image: UIImage? = nil) -> NowPlayableStaticMetadata {
+        let metadata = item.nowPlayableStaticMetadata(image)
+        guard let queueTitle = manager?.queue?.displayTitle(for: item) else { return metadata }
+        return NowPlayableStaticMetadata(
+            mediaType: metadata.mediaType,
+            isLiveStream: metadata.isLiveStream,
+            title: queueTitle.title,
+            artist: queueTitle.subtitle,
+            artwork: metadata.artwork,
+            albumArtist: metadata.albumArtist,
+            albumTitle: metadata.albumTitle
         )
     }
 

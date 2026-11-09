@@ -11,6 +11,7 @@ import CollectionVGrid
 import Combine
 import Defaults
 import Foundation
+import HomeRowsCore
 import IdentifiedCollections
 import JellyfinAPI
 import SwiftUI
@@ -81,66 +82,46 @@ class EpisodeMediaPlayerQueue: ViewModel, MediaPlayerQueue {
         .asAnyCancellable()
     }
 
+    /// Personal fork: the series' episodes in play order, fetched once per series with their media sources (no images
+    /// or user data). Previous and Next skip missing, unaired and media-less episodes (`playableNeighbours`), so the
+    /// adjacent-episodes request (which can return a missing one) isn't used.
+    private var seriesEpisodes: (seriesID: String, episodes: [BaseItemDto])?
+
+    private func episodes(ofSeries seriesID: String) async throws -> [BaseItemDto] {
+        if let seriesEpisodes, seriesEpisodes.seriesID == seriesID {
+            return seriesEpisodes.episodes
+        }
+
+        var parameters = Paths.GetEpisodesParameters()
+        parameters.userID = try authenticatedUser.id
+        parameters.fields = .MinimumFields
+        parameters.enableImages = false
+        parameters.enableUserData = false
+        let response = try await send(Paths.getEpisodes(seriesID: seriesID, parameters: parameters))
+        let episodes = response.value.items ?? []
+
+        seriesEpisodes = (seriesID, episodes)
+        return episodes
+    }
+
+    private func provider(for episode: BaseItemDto) -> MediaPlayerItemProvider {
+        MediaPlayerItemProvider(item: episode) { [weak self] item, modifyItem in
+            let bitrate = await self?.manager?.playbackBitrate ?? Defaults[.VideoPlayer.Playback.appMaximumBitrate]
+            return try await MediaPlayerItem.build(for: item, requestedBitrate: bitrate) { item in
+                item.userData?.playbackPositionTicks = .zero
+                modifyItem?(&item)
+            }
+        }
+    }
+
     private func getAdjacentEpisodes(for item: BaseItemDto?) async throws {
         guard let item, let seriesID = item.seriesID, item.type == .episode else { return }
 
-        let parameters = try Paths.GetEpisodesParameters(
-            userID: authenticatedUser.id,
-            fields: .MinimumFields,
-            adjacentTo: item.id!,
-            limit: 3
-        )
-        let request = Paths.getEpisodes(seriesID: seriesID, parameters: parameters)
-        let response = try await send(request)
+        let episodes = try await episodes(ofSeries: seriesID)
+        let neighbours = playableNeighbours(of: item.id, in: episodes.map(\.queueCandidate))
 
-        // 4 possible states:
-        //  1 - only current episode
-        //  2 - two episodes with next episode
-        //  3 - two episodes with previous episode
-        //  4 - three episodes with current in middle
-
-        // 1
-        guard let items = response.value.items, items.count > 1 else { return }
-
-        var previousItem: BaseItemDto?
-        var nextItem: BaseItemDto?
-
-        if items.count == 2 {
-            if items[0].id == item.id {
-                // 2
-                nextItem = items[1]
-
-            } else {
-                // 3
-                previousItem = items[0]
-            }
-        } else {
-            nextItem = items[2]
-            previousItem = items[0]
-        }
-
-        var nextProvider: MediaPlayerItemProvider?
-        var previousProvider: MediaPlayerItemProvider?
-
-        if let nextItem {
-            nextProvider = MediaPlayerItemProvider(item: nextItem) { [weak self] item, modifyItem in
-                let bitrate = await self?.manager?.playbackBitrate ?? Defaults[.VideoPlayer.Playback.appMaximumBitrate]
-                return try await MediaPlayerItem.build(for: item, requestedBitrate: bitrate) { item in
-                    item.userData?.playbackPositionTicks = .zero
-                    modifyItem?(&item)
-                }
-            }
-        }
-
-        if let previousItem {
-            previousProvider = MediaPlayerItemProvider(item: previousItem) { [weak self] item, modifyItem in
-                let bitrate = await self?.manager?.playbackBitrate ?? Defaults[.VideoPlayer.Playback.appMaximumBitrate]
-                return try await MediaPlayerItem.build(for: item, requestedBitrate: bitrate) { item in
-                    item.userData?.playbackPositionTicks = .zero
-                    modifyItem?(&item)
-                }
-            }
-        }
+        let nextProvider = neighbours.next.map { provider(for: episodes[$0]) }
+        let previousProvider = neighbours.previous.map { provider(for: episodes[$0]) }
 
         guard !Task.isCancelled else { return }
 

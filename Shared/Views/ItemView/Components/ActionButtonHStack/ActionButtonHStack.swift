@@ -224,7 +224,7 @@ extension ItemView {
 
         /// Personal fork: plays a server action's queue.
         private func play(_ action: ItemActionButton) {
-            actionRunner.run(action, itemID: provider.item.id) { provider, queue in
+            actionRunner.run(action, item: provider.item) { provider, queue in
                 router.route(to: .videoPlayer(provider: provider, queue: queue))
             }
         }
