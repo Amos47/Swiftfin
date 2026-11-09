@@ -165,9 +165,8 @@ struct VideoPlayer: View {
 
     #if os(iOS)
     /// Personal fork: closing a trailer queue that moved on to another film lands on that film's page, on top of where
-    /// the queue started (or back at it, when it's already in the path); a list page underneath scrolls to the film. False when the queue
-    /// names no other film (an
-    /// older server, an episode), so the usual close applies.
+    /// the queue started (or back at it, when it's already in the path); a list page underneath scrolls to the film.
+    /// False when the queue names no other film (an older server, an episode), so the usual close applies.
     private func showFilmAfterClosing() -> Bool {
         guard let target = manager.queue?.closeTarget(for: manager.item),
               let presenter = router.router.navigationCoordinator?.presenter

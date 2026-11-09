@@ -119,7 +119,7 @@ final class ItemActionStateTests: XCTestCase {
         )
         let button = stateButton(for: requested)
         XCTAssertEqual(button?.label, "Requested")
-        XCTAssertEqual(button?.systemImage, "arrow.down.circle")
+        XCTAssertEqual(button?.systemImage, "clock")
         XCTAssertEqual(button?.isEnabled, false)
         XCTAssertEqual(button?.isOn, false)
     }
@@ -201,4 +201,75 @@ final class ItemActionStateTests: XCTestCase {
         XCTAssertEqual(layout.inline, [])
         XCTAssertEqual(layout.overflow, [])
     }
+
+    // MARK: Request icons by state
+
+    func testDownloadIconFollowsState() {
+        XCTAssertEqual(actionSystemImage(icon: "download", state: ItemActionRequestState.available), "arrow.down.circle")
+        XCTAssertEqual(actionSystemImage(icon: "download", state: ItemActionRequestState.failed), "arrow.down.circle")
+        XCTAssertEqual(actionSystemImage(icon: "download", state: ItemActionRequestState.requested), "clock")
+        XCTAssertEqual(actionSystemImage(icon: "download", state: ItemActionRequestState.downloading), "arrow.down.circle.dotted")
+        XCTAssertEqual(actionSystemImage(icon: "download", state: nil), "arrow.down.circle")
+    }
+
+    func testRequestStateButtonUsesStateIcon() {
+        let requested = ItemAction(
+            id: "download",
+            label: "Download",
+            icon: "download",
+            kind: "request",
+            state: "requested",
+            labels: [:],
+            enabled: false
+        )
+        XCTAssertEqual(stateButton(for: requested)?.systemImage, "clock")
+    }
+
+    // MARK: Merging a refresh
+
+    func testRefreshMergeKeepsPendingActions() {
+        let current = [save("on"), downloadAction("requested")]
+        let refreshed = [save("off"), downloadAction("downloading")]
+
+        let merged = mergingRefreshedActions(refreshed, into: current, pendingIDs: ["save"])
+
+        XCTAssertEqual(merged.map(\.id), ["save", "download"])
+        XCTAssertEqual(merged[0].state, "on")
+        XCTAssertEqual(merged[1].state, "downloading")
+    }
+
+    func testRefreshMergeWithNothingPendingTakesServer() {
+        let refreshed = [save("on"), downloadAction("requested")]
+        XCTAssertEqual(mergingRefreshedActions(refreshed, into: [save("off")], pendingIDs: []), refreshed)
+    }
+
+    func testRefreshMergePendingMissingFromCurrentTakesServer() {
+        let refreshed = [save("on")]
+        XCTAssertEqual(mergingRefreshedActions(refreshed, into: [], pendingIDs: ["save"]), refreshed)
+    }
+
+    // MARK: Pending by item
+
+    func testPendingKeyIsPerItem() {
+        let pending: Set<ItemActionPendingKey> = [ItemActionPendingKey(itemID: "a", actionID: "save")]
+        XCTAssertTrue(pending.contains(ItemActionPendingKey(itemID: "a", actionID: "save")))
+        XCTAssertFalse(pending.contains(ItemActionPendingKey(itemID: "b", actionID: "save")))
+        XCTAssertEqual(pendingActionIDs(pending, itemID: "a"), ["save"])
+        XCTAssertEqual(pendingActionIDs(pending, itemID: "b"), [])
+        XCTAssertEqual(pendingActionIDs(pending, itemID: nil), [])
+    }
+
+    // MARK: Home rebuild
+
+    func testHomeRefreshModeRebuildsWhenFlagged() {
+        XCTAssertEqual(homeRefreshMode(needsRebuild: true, isStale: false, hasPendingSignals: false), .rebuild)
+        XCTAssertEqual(homeRefreshMode(needsRebuild: true, isStale: true, hasPendingSignals: true), .rebuild)
+        XCTAssertEqual(homeRefreshMode(needsRebuild: false, isStale: true, hasPendingSignals: false), .rowsOnly)
+        XCTAssertEqual(homeRefreshMode(needsRebuild: false, isStale: false, hasPendingSignals: true), .rowsOnly)
+        XCTAssertEqual(homeRefreshMode(needsRebuild: false, isStale: false, hasPendingSignals: false), .none)
+    }
+}
+
+private func downloadAction(_ state: String) -> ItemAction {
+    ItemAction(id: "download", label: "Download", icon: "download", kind: "request", state: state, labels: [:], enabled: true)
 }

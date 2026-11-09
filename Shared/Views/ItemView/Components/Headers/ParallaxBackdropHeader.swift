@@ -10,6 +10,9 @@ import SwiftUI
 
 // Personal fork: the compact enhanced header's backdrop, shared with the discovery list page.
 
+/// The width-to-height ratio of the compact header's backdrop, shared by the film page and the discovery list page.
+let parallaxBackdropHeaderAspectRatio: CGFloat = 1.6
+
 /// A backdrop behind `overlay` with a parallax scroll, mirrored up under the navigation bar and fading at the bottom
 /// into the image's own colour. The overlay is drawn dark.
 struct ParallaxBackdropHeader<Overlay: View>: View {
@@ -18,7 +21,7 @@ struct ParallaxBackdropHeader<Overlay: View>: View {
     let aspectRatio: CGFloat
     private let overlay: Overlay
 
-    init(imageSource: ImageSource, aspectRatio: CGFloat = 1.6, @ViewBuilder overlay: () -> Overlay) {
+    init(imageSource: ImageSource, aspectRatio: CGFloat = parallaxBackdropHeaderAspectRatio, @ViewBuilder overlay: () -> Overlay) {
         self.imageSource = imageSource
         self.aspectRatio = aspectRatio
         self.overlay = overlay()

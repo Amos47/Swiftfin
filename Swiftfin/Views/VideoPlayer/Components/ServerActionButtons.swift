@@ -41,6 +41,8 @@ extension VideoPlayer.PlaybackControls {
                         Label(button.label, systemImage: button.systemImage)
                     }
                     .disabled(isDisabled(button))
+                    // Dimmed explicitly: a forced white style would hide the disabled look under Liquid Glass.
+                    .foregroundStyle(Color.white.opacity(isDisabled(button) ? 0.4 : 1))
                     .frame(width: VideoPlayer.PlaybackControls.Toolbar.buttonSize, height: VideoPlayer.PlaybackControls.Toolbar.buttonSize)
                 }
 
@@ -55,15 +57,15 @@ extension VideoPlayer.PlaybackControls {
                     } label: {
                         Label(L10n.moreActions, systemImage: "ellipsis.circle")
                     }
+                    .foregroundStyle(.white)
                     .frame(width: VideoPlayer.PlaybackControls.Toolbar.buttonSize, height: VideoPlayer.PlaybackControls.Toolbar.buttonSize)
                 }
             }
             .tint(.white)
-            .foregroundStyle(.white)
         }
 
         private func isDisabled(_ button: ItemActionStateButton) -> Bool {
-            !button.isEnabled || model.pendingIDs.contains(button.id)
+            !button.isEnabled || model.isPending(button.id, itemID: manager.item.id)
         }
 
         private func perform(_ button: ItemActionStateButton) {

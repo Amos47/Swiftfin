@@ -238,6 +238,14 @@ public enum ItemActionToggleState {
     public static let off = "off"
 }
 
+/// The states of a `request` action (Download).
+public enum ItemActionRequestState {
+    public static let available = "available"
+    public static let requested = "requested"
+    public static let downloading = "downloading"
+    public static let failed = "failed"
+}
+
 public enum ItemActionID {
     public static let watchTrailer = "watch-trailer"
     /// A list page's Watch trailers (the whole list).
@@ -318,12 +326,19 @@ public func playSpot(isPlayable: Bool, hasWatchTrailer: Bool) -> PlaySpot {
     return hasWatchTrailer ? .watchTrailer : .notInLibrary
 }
 
-/// The SF Symbol for a server icon name; `isOn` fills it for a toggle that's on. Unknown names are `play.fill`.
-public func actionSystemImage(icon: String?, isOn: Bool = false) -> String {
+/// The SF Symbol for a server icon name; `isOn` fills it for a toggle that's on, and `state` picks a request's icon
+/// (Download: a clock once requested, a dotted arrow while downloading, the plain arrow when available or failed).
+/// Unknown names are `play.fill`.
+public func actionSystemImage(icon: String?, isOn: Bool = false, state: String? = nil) -> String {
     switch icon {
     case "trailer": "film"
     case "bookmark": isOn ? "bookmark.fill" : "bookmark"
-    case "download": "arrow.down.circle"
+    case "download":
+        switch state {
+        case ItemActionRequestState.requested: "clock"
+        case ItemActionRequestState.downloading: "arrow.down.circle.dotted"
+        default: "arrow.down.circle"
+        }
     default: "play.fill"
     }
 }
@@ -351,7 +366,7 @@ public func stateButton(for action: ItemAction) -> ItemActionStateButton? {
         id: action.id,
         kind: action.kind,
         label: action.state.flatMap { action.labels[$0] } ?? action.label,
-        systemImage: actionSystemImage(icon: action.icon, isOn: isOn),
+        systemImage: actionSystemImage(icon: action.icon, isOn: isOn, state: action.state),
         isOn: isOn,
         isEnabled: action.isEnabled
     )
@@ -368,6 +383,57 @@ public func optimisticAction(_ action: ItemAction) -> ItemAction? {
 /// `actions` with the action of the same id replaced by `updated`, in place. Without one, `actions` unchanged.
 public func replacingAction(_ updated: ItemAction, in actions: [ItemAction]) -> [ItemAction] {
     actions.map { $0.id == updated.id ? updated : $0 }
+}
+
+/// A refresh of an item's actions merged into what's on screen: the server's list, in its order, except that an
+/// action in `pendingIDs` (a tap still waiting for its own answer) keeps its on-screen version, so a refresh can't
+/// undo a toggle in flight. A pending id that isn't on screen takes the server's.
+public func mergingRefreshedActions(
+    _ refreshed: [ItemAction],
+    into current: [ItemAction],
+    pendingIDs: Set<String>
+) -> [ItemAction] {
+    refreshed.map { action in
+        guard pendingIDs.contains(action.id), let onScreen = current.first(where: { $0.id == action.id }) else {
+            return action
+        }
+        return onScreen
+    }
+}
+
+/// An action tap in flight, for one item: a late answer for the previous item can't unlock the next item's button.
+public struct ItemActionPendingKey: Hashable, Sendable {
+    public let itemID: String
+    public let actionID: String
+
+    public init(itemID: String, actionID: String) {
+        self.itemID = itemID
+        self.actionID = actionID
+    }
+}
+
+/// The action ids in flight for `itemID` (none without an item).
+public func pendingActionIDs(_ pending: Set<ItemActionPendingKey>, itemID: String?) -> Set<String> {
+    guard let itemID else { return [] }
+    return Set(pending.filter { $0.itemID == itemID }.map(\.actionID))
+}
+
+/// How Home refreshes when it appears.
+public enum HomeRefreshMode: Equatable, Sendable {
+    /// Reload the whole layout (a row that was empty, such as Saved, can appear).
+    case rebuild
+    /// Refresh the rows it already shows.
+    case rowsOnly
+    case none
+}
+
+/// `.rebuild` once an action (Save, Download) changed what Home's rows hold; otherwise the usual refresh of the
+/// existing rows when they're stale or have pending changes.
+public func homeRefreshMode(needsRebuild: Bool, isStale: Bool, hasPendingSignals: Bool) -> HomeRefreshMode {
+    if needsRebuild {
+        return .rebuild
+    }
+    return isStale || hasPendingSignals ? .rowsOnly : .none
 }
 
 /// The player's top bar: the `toggle` and `request` buttons (never play-queue actions, nor unknown kinds). Up to

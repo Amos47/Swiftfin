@@ -32,7 +32,7 @@ extension ItemView {
             @StoredValue(.User.itemViewAttributes)
             private var attributes
 
-            private let headerAspectRatio = 1.6
+            private let headerAspectRatio = parallaxBackdropHeaderAspectRatio
 
             private var logo: some View {
                 ImageView(

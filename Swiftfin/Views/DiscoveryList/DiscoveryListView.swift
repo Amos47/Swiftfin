@@ -204,7 +204,7 @@ private struct DiscoveryListHeader: View {
         ParallaxBackdropHeader(imageSource: backdrop) {
             AlternateLayoutView(alignment: .bottom) {
                 Color.clear
-                    .aspectRatio(1.6, contentMode: .fit)
+                    .aspectRatio(parallaxBackdropHeaderAspectRatio, contentMode: .fit)
             } content: {
                 Text(page.title)
                     .font(.largeTitle)

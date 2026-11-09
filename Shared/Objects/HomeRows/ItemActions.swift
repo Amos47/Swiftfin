@@ -199,7 +199,9 @@ final class ItemActionRunner: ObservableObject {
 
 /// Personal fork: performs a `toggle` (Save) or `request` (Download) action on an item. A toggle flips at once and
 /// rolls back if the server fails; a request waits for the server. Either way the server's returned action replaces
-/// it. A request also saves the film on the server, so the item's actions are read again after one.
+/// it. A request also saves the film on the server, so the item's actions are read again after one; that refresh keeps
+/// the on-screen version of any other tap still in flight (`pending`). A success tells Home to rebuild its layout the
+/// next time it appears, so a row that was empty (Saved) can show.
 enum ItemActionPerformer {
 
     @MainActor
@@ -208,6 +210,7 @@ enum ItemActionPerformer {
         itemID: String,
         session: UserSession,
         current: @MainActor () -> [ItemAction],
+        pending: @MainActor () -> Set<String>,
         apply: @MainActor ([ItemAction]) -> Void
     ) async throws {
         guard let original = current().first(where: { $0.id == actionID }),
@@ -223,6 +226,7 @@ enum ItemActionPerformer {
         do {
             let updated = try await api.perform(itemID: itemID, actionID: actionID)
             apply(replacingAction(updated, in: current()))
+            Notifications[.homeRowsNeedRebuild].post()
         } catch {
             if guess != nil {
                 apply(replacingAction(original, in: current()))
@@ -233,7 +237,8 @@ enum ItemActionPerformer {
         if original.kind == ItemActionKind.request {
             let refreshed = await api.actions(itemID: itemID)
             if refreshed.isNotEmpty {
-                apply(refreshed)
+                let others = pending().subtracting([actionID])
+                apply(mergingRefreshedActions(refreshed, into: current(), pendingIDs: others))
             }
         }
     }
@@ -246,8 +251,9 @@ final class PlayerServerActions: ObservableObject {
 
     @Published
     private(set) var actions: ServerItemActions?
+    /// Taps in flight, by item, so a late answer for the previous item can't unlock the next item's button.
     @Published
-    private(set) var pendingIDs: Set<String> = []
+    private(set) var pending: Set<ItemActionPendingKey> = []
 
     private var loadTask: Task<Void, Never>?
     private let logger = Logger.swiftfin()
@@ -258,9 +264,13 @@ final class PlayerServerActions: ObservableObject {
         return actions.actions
     }
 
+    /// Whether `actionID`'s tap for `itemID` is still waiting for the server.
+    func isPending(_ actionID: String, itemID: String?) -> Bool {
+        pendingActionIDs(pending, itemID: itemID).contains(actionID)
+    }
+
     func load(itemID: String?) {
         loadTask?.cancel()
-        pendingIDs = []
         guard let itemID, let session = Container.shared.currentUserSession() else {
             actions = nil
             return
@@ -276,19 +286,21 @@ final class PlayerServerActions: ObservableObject {
 
     func perform(_ button: ItemActionStateButton) {
         guard let itemID = actions?.itemID,
-              !pendingIDs.contains(button.id),
+              !isPending(button.id, itemID: itemID),
               let session = Container.shared.currentUserSession()
         else { return }
 
-        pendingIDs.insert(button.id)
+        let key = ItemActionPendingKey(itemID: itemID, actionID: button.id)
+        pending.insert(key)
         Task {
-            defer { pendingIDs.remove(button.id) }
+            defer { pending.remove(key) }
             do {
                 try await ItemActionPerformer.perform(
                     actionID: button.id,
                     itemID: itemID,
                     session: session,
                     current: { self.actions(for: itemID) },
+                    pending: { pendingActionIDs(self.pending, itemID: itemID) },
                     apply: { updated in
                         // The player may have moved on to another item by now.
                         guard self.actions?.itemID == itemID else { return }

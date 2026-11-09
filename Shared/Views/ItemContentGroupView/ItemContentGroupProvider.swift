@@ -137,6 +137,7 @@ final class ItemContentGroupProvider: ViewModel, ContentGroupProvider {
             itemID: itemID,
             session: session,
             current: { [weak self] in self?.serverActions?.itemID == itemID ? self?.serverActions?.actions ?? [] : [] },
+            pending: { [weak self] in self?.pendingServerActionIDs ?? [] },
             apply: { [weak self] updated in
                 guard let self, serverActions?.itemID == itemID else { return }
                 serverActions = ServerItemActions(itemID: itemID, actions: updated)

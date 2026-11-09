@@ -8,6 +8,7 @@
 
 import Combine
 import Foundation
+import HomeRowsCore
 import JellyfinAPI
 
 @MainActor
@@ -41,6 +42,8 @@ final class ContentGroupViewModel<Provider: ContentGroupProvider>: ViewModel {
     private var candidateGroups: [any ContentGroup] = []
     private var lastRefreshDate = Date.distantPast
     private var lastRefreshSignalDate = Date.distantPast
+    /// Personal fork: Home's layout must be reloaded the next time it appears (a Save or Download changed a row).
+    private var needsRebuild = false
 
     private var hasPendingRefreshSignals: Bool {
         lastRefreshSignalDate > lastRefreshDate
@@ -65,19 +68,35 @@ final class ContentGroupViewModel<Provider: ContentGroupProvider>: ViewModel {
         Notifications[.homeRowsDidChange].publisher
             .sink { [weak self] _ in self?.refresh() }
             .store(in: &cancellables)
+
+        // Personal fork: a Save or Download marks Home for a full rebuild when it next appears, not behind the player.
+        if Provider.self == DefaultContentGroupProvider.self {
+            Notifications[.homeRowsNeedRebuild].publisher
+                .sink { [weak self] _ in self?.needsRebuild = true }
+                .store(in: &cancellables)
+        }
     }
 
     func refreshIfNeeded(
         sinceLastDisappear interval: TimeInterval,
         staleThreshold: TimeInterval = 60
     ) {
-        guard interval > staleThreshold || hasPendingRefreshSignals else { return }
-
-        background.refresh()
+        switch homeRefreshMode(
+            needsRebuild: needsRebuild,
+            isStale: interval > staleThreshold,
+            hasPendingSignals: hasPendingRefreshSignals
+        ) {
+        case .rebuild:
+            refresh()
+        case .rowsOnly:
+            background.refresh()
+        case .none:
+            break
+        }
     }
 
     func refreshIfPendingChanges() {
-        guard hasPendingRefreshSignals else { return }
+        guard needsRebuild || hasPendingRefreshSignals else { return }
 
         refresh()
     }
@@ -135,6 +154,7 @@ final class ContentGroupViewModel<Provider: ContentGroupProvider>: ViewModel {
 
     private func fullRefresh() async throws {
 
+        needsRebuild = false
         self.groups = []
         self.candidateGroups = []
 
